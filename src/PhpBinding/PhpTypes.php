@@ -3,9 +3,7 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\PhpBinding;
 
-use Closure;
 use Mineflow\Language\Error\DefinitionError;
-use Mineflow\Language\Error\InvalidIntegerConversion;
 use Mineflow\Language\Types\ObjectTypes;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Types\TypeExpression;
@@ -86,42 +84,5 @@ final readonly class PhpTypes {
         };
 
         return $phpType->allowsNull() ? Type::union($type, Type::null()) : $type;
-    }
-
-    /**
-     * Returns a function that passes a language value to a PHP parameter of this type. A parameter of Value classes
-     * gets the value as is, or PHP null when it is of none of them; others get the PHP value.
-     * @return Closure(Value): mixed
-     */
-    public function unwrapperFor(ReflectionType $phpType): Closure {
-        $types = $phpType instanceof ReflectionUnionType ? $phpType->getTypes() : [$phpType];
-        $names = array_map(static fn(ReflectionType $type) => $type instanceof ReflectionNamedType ? $type->getName() : "", $types);
-
-        $valueClasses = array_values(array_filter($names, static fn(string $name) => is_a($name, Value::class, true)));
-        if ($valueClasses !== [] && count($valueClasses) === count(array_diff($names, ["null"]))) {
-            return static function (Value $value) use ($valueClasses): ?Value {
-                foreach ($valueClasses as $class) {
-                    if ($value instanceof $class) {
-                        return $value;
-                    }
-                }
-                return null;
-            };
-        }
-
-        $integerOnly = in_array("int", $names, true) && !in_array("float", $names, true) && !in_array("mixed", $names, true);
-
-        return static function (Value $value) use ($integerOnly): mixed {
-            $native = $value->native();
-
-            if ($integerOnly && is_float($native)) {
-                if (!is_finite($native) || floor($native) !== $native || $native < PHP_INT_MIN || $native >= (float)PHP_INT_MAX) {
-                    throw new InvalidIntegerConversion($native);
-                }
-                return (int)$native;
-            }
-
-            return $native;
-        };
     }
 }

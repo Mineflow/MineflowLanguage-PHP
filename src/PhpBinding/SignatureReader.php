@@ -3,12 +3,10 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\PhpBinding;
 
-use Closure;
 use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Definition\Parameter;
 use Mineflow\Language\Error\DefinitionError;
-use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\NamedType;
@@ -19,10 +17,13 @@ use ReflectionParameter;
 use ReflectionType;
 
 /**
- * @phpstan-import-type Extractor from PhpMethodCall
+ * @phpstan-import-type Extractor from ArgumentExtractors
  */
 final readonly class SignatureReader {
-    public function __construct(private PhpTypes $phpTypes) {
+    public function __construct(
+        private PhpTypes           $phpTypes,
+        private ArgumentExtractors $extractors = new ArgumentExtractors(),
+    ) {
     }
 
     /**
@@ -36,7 +37,7 @@ final readonly class SignatureReader {
         $extractors = [];
         if ($ownerType !== null) {
             $first = array_shift($reflected) ?? throw new DefinitionError("A type member needs a parameter for the target value.");
-            $extractors[] = $this->targetExtractor($first, $ownerType);
+            $extractors[] = $this->extractors->forTarget($this->checkTarget($first, $ownerType));
         }
 
         /** @var list<Parameter> $parameters */
@@ -48,11 +49,15 @@ final readonly class SignatureReader {
             }
 
             if ($this->attribute($parameter, FromContext::class) !== null) {
-                $extractors[] = $this->contextExtractor($parameter, $phpType);
+                if (!$phpType instanceof ReflectionNamedType || $phpType->getName() !== EvaluationContext::class || $parameter->isVariadic()) {
+                    throw new DefinitionError("#[FromContext] requires an EvaluationContext parameter.");
+                }
+
+                $extractors[] = $this->extractors->forContext();
                 continue;
             }
 
-            $extractors[] = $this->argumentExtractor($parameter, $phpType, count($parameters));
+            $extractors[] = $this->extractors->forArgument($parameter, $phpType, count($parameters));
             $parameters[] = new Parameter(
                 $parameter->getName(),
                 $this->phpTypes->infer($phpType, $this->attribute($parameter, Param::class)?->type, $this->declaringClass($parameter), $ownerType),
@@ -65,9 +70,9 @@ final readonly class SignatureReader {
     }
 
     /**
-     * @return Extractor
+     * Checks that the parameter can receive a target value of the owner type, and returns its PHP type.
      */
-    private function targetExtractor(ReflectionParameter $parameter, NamedType|CollectionType $ownerType): Closure {
+    private function checkTarget(ReflectionParameter $parameter, NamedType|CollectionType $ownerType): ReflectionType {
         if ($parameter->isPassedByReference() || $parameter->isVariadic() || $this->attribute($parameter, FromContext::class) !== null) {
             throw new DefinitionError("The target value must be the type member's first ordinary parameter.");
         }
@@ -81,44 +86,7 @@ final readonly class SignatureReader {
             throw new DefinitionError("The target value of a type member does not accept the type it is declared on.");
         }
 
-        $convert = $this->phpTypes->unwrapperFor($phpType);
-        return static function (?Value $value, array $arguments, EvaluationContext $context) use ($convert): array {
-            if ($value === null) {
-                throw new InternalError("Missing the target value of a type member.");
-            }
-
-            return [$convert($value)];
-        };
-    }
-
-    /**
-     * @return Extractor
-     */
-    private function contextExtractor(ReflectionParameter $parameter, ReflectionType $phpType): Closure {
-        if (!$phpType instanceof ReflectionNamedType || $phpType->getName() !== EvaluationContext::class || $parameter->isVariadic()) {
-            throw new DefinitionError("#[FromContext] requires an EvaluationContext parameter.");
-        }
-
-        return static fn(?Value $value, array $arguments, EvaluationContext $context): array => [$context];
-    }
-
-    /**
-     * @param int $index The position of the language argument the parameter receives.
-     * @return Extractor
-     */
-    private function argumentExtractor(ReflectionParameter $parameter, ReflectionType $phpType, int $index): Closure {
-        $convert = $this->phpTypes->unwrapperFor($phpType);
-        if ($parameter->isVariadic()) {
-            /** @param list<Value> $arguments */
-            return static fn(?Value $value, array $arguments, EvaluationContext $context): array => array_map($convert, array_values(array_slice($arguments, $index)));
-        }
-
-        if ($parameter->isDefaultValueAvailable()) {
-            $default = $parameter->getDefaultValue();
-            return static fn(?Value $value, array $arguments, EvaluationContext $context): array => [isset($arguments[$index]) ? $convert($arguments[$index]) : $default];
-        }
-
-        return static fn(?Value $value, array $arguments, EvaluationContext $context): array => [$convert($arguments[$index])];
+        return $phpType;
     }
 
     private function declaringClass(ReflectionParameter $parameter): string {

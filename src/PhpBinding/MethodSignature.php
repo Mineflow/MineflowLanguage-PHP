@@ -8,7 +8,7 @@ use Mineflow\Language\Definition\Parameter;
 use Mineflow\Language\Error\DefinitionError;
 
 /**
- * @phpstan-import-type Extractor from PhpMethodCall
+ * @phpstan-import-type Extractor from ArgumentExtractors
  */
 final readonly class MethodSignature {
     /**

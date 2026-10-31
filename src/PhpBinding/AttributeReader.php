@@ -15,6 +15,7 @@ use Mineflow\Language\Definition\MemberDefinition;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Runtime\Member;
+use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\NamedType;
@@ -26,9 +27,21 @@ final readonly class AttributeReader {
     private PhpTypes $phpTypes;
     private SignatureReader $signatures;
 
-    public function __construct(private DeclaredTypes $declared) {
+    private function __construct(private DeclaredTypes $declared) {
         $this->phpTypes = new PhpTypes($declared->objectTypes);
         $this->signatures = new SignatureReader($this->phpTypes);
+    }
+
+    /**
+     * Reads the members that attributes declare: on the classes of #[DeclareType] declarers, on the types
+     * #[ExtendType] extensions name, and as functions.
+     * @param list<object> $declarers
+     * @param list<object> $extensions
+     * @param list<object> $functions
+     */
+    public static function read(array $declarers, array $extensions, array $functions): MemberTable {
+        $declared = DeclaredTypes::read($declarers);
+        return MemberTable::from($declared->objectTypes, (new self($declared))->members($extensions, $functions));
     }
 
     /**
@@ -36,7 +49,7 @@ final readonly class AttributeReader {
      * @param list<object> $functions
      * @return list<Member>
      */
-    public function read(array $extensions, array $functions): array {
+    private function members(array $extensions, array $functions): array {
         $members = [];
         foreach ($this->declared->declarers as [$type, $declarer]) {
             $members[] = $this->membersOf($type, $declarer);
