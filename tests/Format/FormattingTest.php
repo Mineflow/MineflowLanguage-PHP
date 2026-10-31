@@ -4,11 +4,16 @@ declare(strict_types=1);
 namespace Mineflow\Language\Tests\Format;
 
 use Mineflow\Language\Attribute\DeclareType;
+use Mineflow\Language\Attribute\Entries;
+use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Format\DefaultValueFormatter;
 use Mineflow\Language\Format\ValueFormatter;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
+use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Types\Builtin;
+use Mineflow\Language\Types\Expression\ListOf;
 use Mineflow\Language\Values\BooleanValue;
 use Mineflow\Language\Values\ListValue;
 use Mineflow\Language\Values\StringValue;
@@ -63,6 +68,20 @@ final class Rank implements Stringable {
 final class RankType {
 }
 
+final class Greeting {
+}
+
+#[DeclareType(Greeting::class, name: "greeting")]
+final class GreetingType {
+    /**
+     * @return list<mixed>
+     */
+    #[Entries(type: new ListOf(Builtin::String))]
+    public function words(Greeting $greeting, #[FromContext] EvaluationContext $context): array {
+        return ["hi", $context->scope()->get("name")->native()];
+    }
+}
+
 final class FormattingTest extends TestCase {
     public function testARegisteredObjectIsWrittenThroughItsOwnStringForm(): void {
         $language = (new LanguageBuilder())->addType(new RankType())->build();
@@ -70,6 +89,13 @@ final class FormattingTest extends TestCase {
 
         self::assertSame("#2", $language->render("{rank}", $scope));
         self::assertSame("#2", $language->text($scope->get("rank")));
+    }
+
+    public function testAValueIsWrittenInTheScopeItIsGiven(): void {
+        $language = (new LanguageBuilder())->addType(new GreetingType())->build();
+        $scope = $language->scope(["g" => new Greeting(), "name" => "aieuo"]);
+
+        self::assertSame("[hi,aieuo]", $language->text($scope->get("g"), $scope));
     }
 
     public function testTheDefaultFormatterIsTheOneThisLanguageWrites(): void {

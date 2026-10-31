@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Definition;
 
+use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Stringable;
 
@@ -40,7 +41,14 @@ final readonly class MemberReference implements Stringable {
         return new self(null, MemberKind::Function, $name);
     }
 
+    /**
+     * The same member as a value of the type reaches it, such as one it inherits. A function belongs to no type.
+     */
     public function withTypeName(string $typeName): self {
+        if ($this->typeName === null) {
+            throw new DefinitionError("A function belongs to no type: $this");
+        }
+
         return new self($typeName, $this->kind, $this->name);
     }
 

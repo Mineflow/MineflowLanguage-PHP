@@ -112,10 +112,12 @@ final readonly class Language {
     }
 
     /**
+     * Writes the value the way a template would. A member that writing it calls, such as a type's #[Entries],
+     * reads the given scope.
      * @throws LanguageException
      */
-    public function text(Value $value): string {
-        return $this->context($this->scope())->text($value);
+    public function text(Value $value, ?Scope $scope = null): string {
+        return $this->context($scope ?? $this->scope())->text($value);
     }
 
     private function context(Scope $scope): EvaluationContext {
