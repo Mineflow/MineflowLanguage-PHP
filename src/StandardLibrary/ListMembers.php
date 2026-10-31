@@ -32,7 +32,7 @@ final class ListMembers {
 
     #[Method(type: new ListOf(Placeholder::Key), description: "Every index of the list, in order.")]
     public function keys(ListValue $list): ListValue {
-        return new ListValue(array_map(Value::from(...), array_keys($list->items())));
+        return $list->keys();
     }
 
     #[Method(type: new ListOf(Placeholder::Element), description: "Every item of the list, in order.")]

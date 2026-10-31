@@ -38,19 +38,19 @@ final class ValuesTest extends TestCase {
 
     public function testAnItemIsAppendedAtTheEndOfAList(): void {
         $list = new ListValue([new NumberValue(1), new NumberValue(2)]);
-        self::assertSame([1, 2, "a"], $list->append(Value::from("a"))->native());
-        self::assertSame("list<number|string>", (string)$list->append(Value::from("a"))->type);
+        self::assertSame([1, 2, "a"], $list->append(new StringValue("a"))->native());
+        self::assertSame("list<number|string>", (string)$list->append(new StringValue("a"))->type);
         self::assertSame([1, 2], $list->native());
     }
 
     public function testWithPutsAnItemInThePlaceOfTheOneUnderAKey(): void {
         $list = new ListValue([new NumberValue(1), new NumberValue(2)]);
-        self::assertSame([1, 9], $list->with(1, Value::from(9))->native());
-        self::assertSame([1, 9], $list->with("1", Value::from(9))->native());
+        self::assertSame([1, 9], $list->with(1, new NumberValue(9))->native());
+        self::assertSame([1, 9], $list->with("1", new NumberValue(9))->native());
 
         $map = new MapValue(["a" => new NumberValue(1)]);
-        self::assertSame(["a" => 2], $map->with("a", Value::from(2))->native());
-        self::assertSame(["a" => 1, "b" => 2], $map->with("b", Value::from(2))->native());
+        self::assertSame(["a" => 2], $map->with("a", new NumberValue(2))->native());
+        self::assertSame(["a" => 1, "b" => 2], $map->with("b", new NumberValue(2))->native());
         self::assertSame("map", $map->with("b", new MapValue([]))->item("b")?->type->name);
     }
 
@@ -58,7 +58,7 @@ final class ValuesTest extends TestCase {
     public function testWithRefusesAnIndexTheListDoesNotHave(string|int $key): void {
         $this->expectException(InvalidValue::class);
         $this->expectExceptionMessage("The list has no item at $key; append() adds one at its end.");
-        (new ListValue([new NumberValue(1), new NumberValue(2)]))->with($key, Value::from(9));
+        (new ListValue([new NumberValue(1), new NumberValue(2)]))->with($key, new NumberValue(9));
     }
 
     /**

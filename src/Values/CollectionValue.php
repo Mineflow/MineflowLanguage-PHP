@@ -18,6 +18,13 @@ abstract readonly class CollectionValue extends Value {
 
     abstract public function without(string|int $key): static;
 
+    public function keys(): ListValue {
+        return new ListValue(array_map(
+            static fn(string|int $key) => is_int($key) ? new NumberValue($key) : new StringValue($key),
+            array_keys($this->items()),
+        ));
+    }
+
     /**
      * @return array<string|int, mixed>
      */

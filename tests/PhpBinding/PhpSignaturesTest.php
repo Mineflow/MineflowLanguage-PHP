@@ -113,7 +113,7 @@ final class PhpSignaturesTest extends TestCase {
         $this->refuse("Specify the language type for Value in", new class {
             #[Method]
             public function wrapped(): Value {
-                return Value::from(1);
+                return new NumberValue(1);
             }
         });
     }

@@ -34,7 +34,7 @@ final class MapMembers {
 
     #[Method(type: new ListOf(Placeholder::Key), description: "Every key of the map.")]
     public function keys(MapValue $map): ListValue {
-        return new ListValue(array_map(Value::from(...), array_keys($map->items())));
+        return $map->keys();
     }
 
     #[Method(type: new ListOf(Placeholder::Element), description: "Every value of the map.")]

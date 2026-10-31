@@ -8,7 +8,10 @@ use Mineflow\Language\Types\ListType;
 use Mineflow\Language\Types\MapType;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Values\ListValue;
-use Mineflow\Language\Values\Value;
+use Mineflow\Language\Values\MapValue;
+use Mineflow\Language\Values\NullValue;
+use Mineflow\Language\Values\NumberValue;
+use Mineflow\Language\Values\StringValue;
 use PHPUnit\Framework\TestCase;
 
 final class TypeTest extends TestCase {
@@ -29,8 +32,8 @@ final class TypeTest extends TestCase {
         $type = Type::map(Type::list(Type::union(Type::number(), Type::null())));
 
         self::assertSame("map<number|string,list<null|number>>", (string)$type);
-        self::assertTrue($type->accepts(Value::from(["scores" => [2, null, 4]])->type));
-        self::assertFalse($type->accepts(Value::from(["scores" => [2, "four"]])->type));
+        self::assertTrue($type->accepts((new MapValue(["scores" => new ListValue([new NumberValue(2), new NullValue(), new NumberValue(4)])]))->type));
+        self::assertFalse($type->accepts((new MapValue(["scores" => new ListValue([new NumberValue(2), new StringValue("four")])]))->type));
         self::assertTrue(Type::list(Type::string())->accepts((new ListValue([]))->type));
         self::assertTrue(Type::map(Type::string())->accepts(Type::map(Type::string(), Type::string())));
         self::assertFalse(Type::map(Type::string(), Type::string())->accepts(Type::map(Type::string())));

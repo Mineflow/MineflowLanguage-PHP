@@ -11,7 +11,7 @@ use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Types\Builtin;
-use Mineflow\Language\Values\Value;
+use Mineflow\Language\Values\StringValue;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -107,7 +107,7 @@ final class MemberDeclarationsTest extends TestCase {
         class {
             #[Method]
             public function shout(#[FromContext] EvaluationContext $context, string $value): string {
-                return $context->text(Value::from($value));
+                return $context->text(new StringValue($value));
             }
         })->build();
     }

@@ -15,6 +15,7 @@ use Mineflow\Language\Runtime\MemberImplementation;
 use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Types\ObjectTypes;
 use Mineflow\Language\Types\Type;
+use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
@@ -23,7 +24,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class Shout implements MemberImplementation {
     public function call(?Value $target, array $arguments, EvaluationContext $context): Value {
-        return Value::from(strtoupper($context->text($target ?? $arguments[0])));
+        return new StringValue(strtoupper($context->text($target ?? $arguments[0])));
     }
 }
 

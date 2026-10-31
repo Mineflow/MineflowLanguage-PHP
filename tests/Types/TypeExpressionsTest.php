@@ -20,6 +20,7 @@ use Mineflow\Language\Types\Placeholder;
 use Mineflow\Language\Types\Special;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Values\MapValue;
+use Mineflow\Language\Values\NullValue;
 use Mineflow\Language\Values\NumberValue;
 use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
@@ -33,7 +34,7 @@ final class Player {
 final class ListExtras {
     #[Method(type: new OneOf(Builtin::List, Builtin::Map, Builtin::Null))]
     public function nothing(Value $value): Value {
-        return Value::from(null);
+        return new NullValue();
     }
 
     #[Method(type: new ListOf(Special::Mixed))]
@@ -97,7 +98,7 @@ final class TypeExpressionsTest extends TestCase {
         class {
             #[Method(type: new Nullable(Placeholder::Element))]
             public function first(int|float $value): Value {
-                return Value::from($value);
+                return new NumberValue($value);
             }
         };
         $this->expectException(DefinitionError::class);
@@ -110,7 +111,7 @@ final class TypeExpressionsTest extends TestCase {
         class {
             #[Method(type: new ObjectOf(Player::class))]
             public function owner(int|float $value): Value {
-                return Value::from(null);
+                return new NullValue();
             }
         };
         $this->expectException(DefinitionError::class);

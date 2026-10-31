@@ -66,6 +66,13 @@ final class ValueMapperTest extends TestCase {
         self::assertSame("weapon", (string)$this->mapper->wrap(new Sword())->type);
     }
 
+    public function testAPhpValueWithNoLanguageCounterpartIsRefused(): void {
+        $this->expectException(InvalidValue::class);
+        $this->expectExceptionMessage("No language value for a PHP resource (stream)");
+
+        $this->mapper->wrap([fopen("php://memory", "r")]);
+    }
+
     public function testAnUnregisteredObjectNamesItsClass(): void {
         $this->expectException(InvalidValue::class);
         $this->expectExceptionMessage("Unregistered object: ".ValueMapperTest::class);
