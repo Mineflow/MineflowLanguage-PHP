@@ -3,12 +3,12 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Tests\Types;
 
-use Mineflow\Language\ListValue;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\ListType;
 use Mineflow\Language\Types\MapType;
 use Mineflow\Language\Types\Type;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\ListValue;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
 final class TypeTest extends TestCase {

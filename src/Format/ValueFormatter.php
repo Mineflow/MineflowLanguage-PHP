@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Format;
 
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 
 /**
  * Converts values to text. Used for template interpolation and joining lists.

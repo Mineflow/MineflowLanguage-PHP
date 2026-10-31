@@ -3,17 +3,16 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime;
 
-use Mineflow\Language\CollectionValue;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Error\UndefinedMember;
-use Mineflow\Language\ListValue;
-use Mineflow\Language\MapValue;
-use Mineflow\Language\ObjectValue;
-use Mineflow\Language\Scope;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Type;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\CollectionValue;
+use Mineflow\Language\Values\ListValue;
+use Mineflow\Language\Values\MapValue;
+use Mineflow\Language\Values\ObjectValue;
+use Mineflow\Language\Values\Value;
 use Stringable;
 
 final readonly class EvaluationContext {

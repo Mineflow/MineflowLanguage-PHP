@@ -9,11 +9,11 @@ use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\ArgumentTypeMismatch;
 use Mineflow\Language\Error\MissingArgument;
 use Mineflow\Language\Error\TooManyArguments;
-use Mineflow\Language\NumberValue;
-use Mineflow\Language\StringValue;
 use Mineflow\Language\Types\MixedType;
 use Mineflow\Language\Types\Type;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\NumberValue;
+use Mineflow\Language\Values\StringValue;
+use Mineflow\Language\Values\Value;
 
 final readonly class ArgumentBinder {
     /**

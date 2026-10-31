@@ -3,16 +3,16 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Format;
 
-use Mineflow\Language\BooleanValue;
 use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Error\NoTextRepresentation;
-use Mineflow\Language\ListValue;
-use Mineflow\Language\MapValue;
-use Mineflow\Language\NullValue;
-use Mineflow\Language\NumberValue;
-use Mineflow\Language\ObjectValue;
-use Mineflow\Language\StringValue;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\BooleanValue;
+use Mineflow\Language\Values\ListValue;
+use Mineflow\Language\Values\MapValue;
+use Mineflow\Language\Values\NullValue;
+use Mineflow\Language\Values\NumberValue;
+use Mineflow\Language\Values\ObjectValue;
+use Mineflow\Language\Values\StringValue;
+use Mineflow\Language\Values\Value;
 use Stringable;
 
 final readonly class DefaultValueFormatter implements ValueFormatter {

@@ -7,7 +7,7 @@ use Mineflow\Language\Definition\Declaration;
 use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\ReturnTypeMismatch;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 
 final readonly class MemberInvoker {
     public function __construct(private ArgumentBinder $argumentBinder = new ArgumentBinder()) {

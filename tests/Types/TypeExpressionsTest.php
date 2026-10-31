@@ -10,8 +10,6 @@ use Mineflow\Language\Attribute\Property;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\LanguageBuilder;
-use Mineflow\Language\MapValue;
-use Mineflow\Language\NumberValue;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\Expression\ListOf;
 use Mineflow\Language\Types\Expression\MapOf;
@@ -21,7 +19,9 @@ use Mineflow\Language\Types\Expression\OneOf;
 use Mineflow\Language\Types\Placeholder;
 use Mineflow\Language\Types\Special;
 use Mineflow\Language\Types\Type;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\MapValue;
+use Mineflow\Language\Values\NumberValue;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
 final class Player {

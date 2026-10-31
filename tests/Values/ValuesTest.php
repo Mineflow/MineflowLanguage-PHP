@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Tests;
+namespace Mineflow\Language\Tests\Values;
 
 use Mineflow\Language\Error\InvalidValue;
-use Mineflow\Language\ListValue;
-use Mineflow\Language\MapValue;
-use Mineflow\Language\NullValue;
-use Mineflow\Language\NumberValue;
-use Mineflow\Language\ObjectValue;
-use Mineflow\Language\StringValue;
 use Mineflow\Language\Types\Type;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\ListValue;
+use Mineflow\Language\Values\MapValue;
+use Mineflow\Language\Values\NullValue;
+use Mineflow\Language\Values\NumberValue;
+use Mineflow\Language\Values\ObjectValue;
+use Mineflow\Language\Values\StringValue;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

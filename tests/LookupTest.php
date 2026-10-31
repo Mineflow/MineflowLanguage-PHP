@@ -8,7 +8,7 @@ use Mineflow\Language\Attribute\Property;
 use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
-use Mineflow\Language\Scope;
+use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Tests\Fixtures\Settings;
 use Mineflow\Language\Tests\Fixtures\SettingsType;
 use PHPUnit\Framework\TestCase;

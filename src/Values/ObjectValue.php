@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language;
+namespace Mineflow\Language\Values;
 
 use Mineflow\Language\Error\InvalidValue;
 use Mineflow\Language\Types\NamedType;

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language;
+namespace Mineflow\Language\Values;
 
 /**
  * @phpstan-sealed ListValue|MapValue

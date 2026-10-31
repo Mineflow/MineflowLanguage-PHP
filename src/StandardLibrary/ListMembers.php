@@ -9,10 +9,7 @@ use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
 use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Attribute\Property;
-use Mineflow\Language\CollectionValue;
 use Mineflow\Language\Error\UnsupportedCalculation;
-use Mineflow\Language\ListValue;
-use Mineflow\Language\NullValue;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Builtin;
@@ -20,7 +17,10 @@ use Mineflow\Language\Types\Expression\ListOf;
 use Mineflow\Language\Types\Expression\Nullable;
 use Mineflow\Language\Types\Placeholder;
 use Mineflow\Language\Types\Special;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\CollectionValue;
+use Mineflow\Language\Values\ListValue;
+use Mineflow\Language\Values\NullValue;
+use Mineflow\Language\Values\Value;
 
 #[ExtendType(Builtin::List)]
 final class ListMembers {

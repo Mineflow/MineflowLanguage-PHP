@@ -10,7 +10,7 @@ use Mineflow\Language\Error\UndefinedVariable;
 use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
-use Mineflow\Language\Scope;
+use Mineflow\Language\Runtime\Scope;
 use PHPUnit\Framework\TestCase;
 
 final class Rules {

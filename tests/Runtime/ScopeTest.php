@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Tests;
+namespace Mineflow\Language\Tests\Runtime;
 
 use Mineflow\Language\Language;
-use Mineflow\Language\Scope;
+use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\Type;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
 final class ScopeTest extends TestCase {

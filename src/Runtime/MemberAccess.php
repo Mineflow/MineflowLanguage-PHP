@@ -3,17 +3,17 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime;
 
-use Mineflow\Language\CollectionValue;
 use Mineflow\Language\Definition\Catalog;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\UndefinedMember;
-use Mineflow\Language\ListValue;
-use Mineflow\Language\MapValue;
-use Mineflow\Language\NullValue;
-use Mineflow\Language\StringValue;
 use Mineflow\Language\Types\CollectionType;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\CollectionValue;
+use Mineflow\Language\Values\ListValue;
+use Mineflow\Language\Values\MapValue;
+use Mineflow\Language\Values\NullValue;
+use Mineflow\Language\Values\StringValue;
+use Mineflow\Language\Values\Value;
 
 /**
  * Resolves `value.name`, looking in this order:

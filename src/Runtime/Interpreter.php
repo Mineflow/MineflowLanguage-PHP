@@ -7,10 +7,9 @@ use Mineflow\Language\Definition\Catalog;
 use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Format\DefaultValueFormatter;
 use Mineflow\Language\Format\ValueFormatter;
-use Mineflow\Language\Scope;
 use Mineflow\Language\Syntax\Node\ConcatenationNode;
 use Mineflow\Language\Syntax\Node\Node;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 
 final readonly class Interpreter {
     public ValueMapper $valueMapper;

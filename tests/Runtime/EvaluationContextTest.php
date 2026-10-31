@@ -11,7 +11,7 @@ use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Tests\Fixtures\Settings;
 use Mineflow\Language\Tests\Fixtures\SettingsType;
 use Mineflow\Language\Types\Builtin;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
 /**

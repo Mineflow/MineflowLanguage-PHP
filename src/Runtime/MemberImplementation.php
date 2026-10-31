@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime;
 
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 
 interface MemberImplementation {
     /**

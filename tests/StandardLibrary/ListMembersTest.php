@@ -5,7 +5,7 @@ namespace Mineflow\Language\Tests\StandardLibrary;
 
 use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Language;
-use Mineflow\Language\Scope;
+use Mineflow\Language\Runtime\Scope;
 use PHPUnit\Framework\TestCase;
 
 final class ListMembersTest extends TestCase {

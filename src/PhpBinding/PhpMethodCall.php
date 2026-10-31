@@ -7,7 +7,7 @@ use Closure;
 use Mineflow\Language\Definition\MemberDefinition;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\MemberImplementation;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 
 /**
  * @phpstan-type Extractor Closure(?Value, list<Value>, EvaluationContext): list<mixed>

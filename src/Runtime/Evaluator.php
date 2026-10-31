@@ -8,9 +8,6 @@ use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Error\SourceError;
 use Mineflow\Language\Format\DefaultValueFormatter;
-use Mineflow\Language\NumberValue;
-use Mineflow\Language\Scope;
-use Mineflow\Language\StringValue;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Syntax\Node\BinaryExpressionNode;
 use Mineflow\Language\Syntax\Node\ComputedIdentifierNode;
@@ -26,7 +23,9 @@ use Mineflow\Language\Syntax\Node\ParenthesizedNode;
 use Mineflow\Language\Syntax\Node\PropertyNode;
 use Mineflow\Language\Syntax\Node\StringNode;
 use Mineflow\Language\Syntax\Node\UnaryExpressionNode;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\NumberValue;
+use Mineflow\Language\Values\StringValue;
+use Mineflow\Language\Values\Value;
 use Throwable;
 
 final readonly class Evaluator {

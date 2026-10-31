@@ -25,7 +25,7 @@ use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\NamedType;
 use Mineflow\Language\Types\Type;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;

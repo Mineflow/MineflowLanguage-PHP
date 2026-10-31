@@ -13,7 +13,7 @@ use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\Special;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 
 #[ExtendType(Builtin::String)]
 final class StringMembers {

@@ -8,9 +8,11 @@ use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Format\DefaultValueFormatter;
 use Mineflow\Language\Format\ValueFormatter;
 use Mineflow\Language\Runtime\Interpreter;
+use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Syntax\Node\ConcatenationNode;
 use Mineflow\Language\Syntax\Node\Node;
 use Mineflow\Language\Syntax\Parser;
+use Mineflow\Language\Values\Value;
 
 final readonly class Language {
     public Catalog $catalog;

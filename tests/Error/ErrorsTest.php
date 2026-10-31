@@ -13,7 +13,7 @@ use Mineflow\Language\Error\UndefinedMember;
 use Mineflow\Language\Error\UndefinedVariable;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
-use Mineflow\Language\Scope;
+use Mineflow\Language\Runtime\Scope;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

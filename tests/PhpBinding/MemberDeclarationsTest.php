@@ -11,7 +11,7 @@ use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Types\Builtin;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
 /**

@@ -9,7 +9,6 @@ use Mineflow\Language\Attribute\ExtendType;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
 use Mineflow\Language\Attribute\Param;
-use Mineflow\Language\CollectionValue;
 use Mineflow\Language\Error\ArgumentTypeMismatch;
 use Mineflow\Language\Error\UndefinedMember;
 use Mineflow\Language\Error\UnsupportedCalculation;
@@ -21,7 +20,8 @@ use Mineflow\Language\Tests\Fixtures\SettingsType;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\Expression\MapOf;
 use Mineflow\Language\Types\Special;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\CollectionValue;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
 /**

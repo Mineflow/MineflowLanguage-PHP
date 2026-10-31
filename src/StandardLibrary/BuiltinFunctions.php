@@ -6,12 +6,12 @@ namespace Mineflow\Language\StandardLibrary;
 use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Param;
-use Mineflow\Language\MapValue;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\Expression\MapOf;
 use Mineflow\Language\Types\Special;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\MapValue;
+use Mineflow\Language\Values\Value;
 
 final class BuiltinFunctions {
     #[Method(description: "The number π.")]

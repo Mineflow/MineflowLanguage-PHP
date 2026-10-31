@@ -8,7 +8,7 @@ use Mineflow\Language\Definition\Declaration;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Syntax\BinaryOperator;
-use Mineflow\Language\Value;
+use Mineflow\Language\Values\Value;
 
 /**
  * Computes `left symbol right` with the first operator that applies:
