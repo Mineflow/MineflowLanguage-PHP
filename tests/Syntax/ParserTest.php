@@ -42,7 +42,7 @@ final class ParserTest extends TestCase {
 
     public function testOnlyAnOperatorWithAPrefixFormMayPrecedeItsOperand(): void {
         $this->expectException(UnexpectedToken::class);
-        
+
         $this->parser->parseExpression("*5");
     }
 }

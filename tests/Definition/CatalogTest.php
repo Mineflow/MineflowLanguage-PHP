@@ -164,7 +164,7 @@ final class CatalogTest extends TestCase {
 
     public function testADeclarationSerialisesToJsonForHostTooling(): void {
         $repeat = $this->badges()->catalog->definition(MemberReference::method("badge", "repeat"));
-        
+
         self::assertInstanceOf(MemberDefinition::class, $repeat);
         self::assertSame(
             ["returns" => "string", "parameters" => [["name" => "times", "type" => "number", "optional" => true, "variadic" => false]], "description" => "The label, repeated."],

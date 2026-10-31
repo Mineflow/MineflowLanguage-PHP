@@ -124,7 +124,7 @@ final class ErrorsTest extends TestCase {
         } catch (SourceError $error) {
             return $error;
         }
-        
+
         self::fail("Evaluating `$source` should have failed.");
     }
 }

@@ -69,7 +69,7 @@ final class ValueMapperTest extends TestCase {
     public function testAnUnregisteredObjectNamesItsClass(): void {
         $this->expectException(InvalidValue::class);
         $this->expectExceptionMessage("Unregistered object: ".ValueMapperTest::class);
-        
+
         $this->mapper->wrap($this);
     }
 }

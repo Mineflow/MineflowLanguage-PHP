@@ -149,7 +149,7 @@ final class PhpSignaturesTest extends TestCase {
         })->build();
 
         $parameter = static fn(string $name) => (string)$language->catalog->definition(MemberReference::function($name))?->parameters[0]->type;
-        
+
         self::assertSame("list|map|null", $parameter("size"));
         self::assertSame("number|string", $parameter("either"));
         self::assertSame("list<string>", $parameter("names"));
