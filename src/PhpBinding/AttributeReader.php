@@ -3,45 +3,32 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\PhpBinding;
 
-use Closure;
 use Mineflow\Language\Attribute\Entries;
 use Mineflow\Language\Attribute\ExtendType;
-use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Attribute\Index;
 use Mineflow\Language\Attribute\MemberAttribute;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
-use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Attribute\Property;
 use Mineflow\Language\Definition\Declaration;
 use Mineflow\Language\Definition\MemberDefinition;
-use Mineflow\Language\Definition\MemberKind;
 use Mineflow\Language\Definition\MemberReference;
-use Mineflow\Language\Definition\Parameter;
 use Mineflow\Language\Error\DefinitionError;
-use Mineflow\Language\Error\InternalError;
-use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\Member;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\NamedType;
-use Mineflow\Language\Types\Type;
-use Mineflow\Language\Values\Value;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
-use ReflectionNamedType;
-use ReflectionParameter;
-use ReflectionProperty;
 
-/**
- * @phpstan-import-type Extractor from PhpMethodCall
- */
 final readonly class AttributeReader {
     private PhpTypes $phpTypes;
+    private SignatureReader $signatures;
 
     public function __construct(private DeclaredTypes $declared) {
         $this->phpTypes = new PhpTypes($declared->objectTypes);
+        $this->signatures = new SignatureReader($this->phpTypes);
     }
 
     /**
@@ -56,7 +43,7 @@ final readonly class AttributeReader {
         }
 
         foreach ($extensions as $extension) {
-            $extended = ($this->attribute(new ReflectionClass($extension), ExtendType::class)
+            $extended = (((new ReflectionClass($extension))->getAttributes(ExtendType::class)[0] ?? null)?->newInstance()
                 ?? throw new DefinitionError("Missing #[ExtendType] on ".$extension::class))->type;
             $ownerType = $extended instanceof Builtin
                 ? $extended->type()
@@ -77,8 +64,6 @@ final readonly class AttributeReader {
      */
     private function membersOf(NamedType|CollectionType|null $ownerType, object $instance): array {
         $class = new ReflectionClass($instance);
-        $global = $ownerType === null;
-        $typeName = $ownerType?->name;
 
         $members = [];
         foreach ($class->getMethods() as $method) {
@@ -91,33 +76,16 @@ final readonly class AttributeReader {
                     .$class->getName()."::".$method->getName());
             }
 
-            $parameters = $method->getParameters();
-
-            /** @var list<Extractor> $extractors */
-            $extractors = [];
-            if (!$global) {
-                $first = array_shift($parameters) ?? throw new DefinitionError("A type member needs a parameter for the target value.");
-                $extractors[] = $this->targetExtractor($first, $ownerType);
-            }
-
-            /** @var list<Parameter> $definitions */
-            $definitions = [];
-            foreach ($parameters as $parameter) {
-                $extractors[] = $this->parameterExtractor($parameter, $ownerType, $definitions);
-            }
-
+            $signature = $this->signatures->read($method, $ownerType);
             foreach ($attributes as $attribute) {
-                $references = $this->references($attribute, $typeName, $method->getName());
-                $kind = $references[0]->kind;
-                $this->checkParameters($kind, $definitions);
+                $references = $this->references($attribute, $ownerType?->name, $method->getName());
 
                 $declaringClass = $method->getDeclaringClass()->getName();
                 $phpType = $method->getReturnType() ?? throw new DefinitionError("Missing PHP return type in $declaringClass");
                 $returns = $this->phpTypes->infer($phpType, $attribute->type, $declaringClass, $ownerType);
 
-                $memberParameters = $kind->takesArguments() ? $definitions : [];
-                $definition = new MemberDefinition($returns, $memberParameters, $attribute->description);
-                $call = new PhpMethodCall($definition, $instance, $method->getName(), $extractors);
+                $definition = new MemberDefinition($returns, $signature->parametersFor($references[0]->kind), $attribute->description);
+                $call = new PhpMethodCall($definition, $instance, $method->getName(), $signature->extractors);
 
                 foreach ($references as $reference) {
                     $members[] = new Member(new Declaration($reference, $definition), $call);
@@ -160,98 +128,5 @@ final readonly class AttributeReader {
             $attribute instanceof Index => [MemberReference::index($typeName)],
             $attribute instanceof Entries => [MemberReference::entries($typeName)],
         };
-    }
-
-    /**
-     * @param list<Parameter> $parameters
-     */
-    private function checkParameters(MemberKind $kind, array $parameters): void {
-        if ($kind->takesArguments()) {
-            return;
-        }
-
-        foreach ($parameters as $parameter) {
-            if (!$parameter->optional) {
-                throw new DefinitionError("No language arguments for {$kind->value}.");
-            }
-        }
-    }
-
-    /**
-     * @return Extractor
-     */
-    private function targetExtractor(ReflectionParameter $parameter, NamedType|CollectionType $ownerType): Closure {
-        if ($parameter->isPassedByReference() || $parameter->isVariadic() || $this->attribute($parameter, FromContext::class) !== null) {
-            throw new DefinitionError("The target value must be the type member's first ordinary parameter.");
-        }
-
-        $phpType = $parameter->getType() ?? throw new DefinitionError("Missing PHP type for the target value.");
-        $declaredType = $this->attribute($parameter, Param::class)?->type;
-
-        $isRawTarget = $phpType instanceof ReflectionNamedType && in_array($phpType->getName(), [Value::class, "array"], true);
-        $targetType = $declaredType === null && $isRawTarget ? $ownerType : $this->phpTypes->infer($phpType, $declaredType, $this->declaringClass($parameter), $ownerType);
-        if (!$targetType->resolvePlaceholders($ownerType)->accepts($ownerType)) {
-            throw new DefinitionError("The target value of a type member does not accept the type it is declared on.");
-        }
-
-        $convert = $this->phpTypes->unwrapperFor($phpType);
-        return static function (?Value $value, array $arguments, EvaluationContext $context) use ($convert): array {
-            if ($value === null) {
-                throw new InternalError("Missing the target value of a type member.");
-            }
-
-            return [$convert($value)];
-        };
-    }
-
-    /**
-     * @param list<Parameter> $definitions
-     * @return Extractor
-     */
-    private function parameterExtractor(ReflectionParameter $parameter, ?Type $ownerType, array &$definitions): Closure {
-        $phpType = $parameter->getType() ?? throw new DefinitionError("Missing PHP type for {$parameter->getName()}");
-        if ($parameter->isPassedByReference()) {
-            throw new DefinitionError("By-reference language arguments are unsupported.");
-        }
-
-        if ($this->attribute($parameter, FromContext::class) !== null) {
-            if (!$phpType instanceof ReflectionNamedType || $phpType->getName() !== EvaluationContext::class || $parameter->isVariadic()) {
-                throw new DefinitionError("#[FromContext] requires an EvaluationContext parameter.");
-            }
-            return static fn(?Value $value, array $arguments, EvaluationContext $context): array => [$context];
-        }
-
-        $declaredType = $this->attribute($parameter, Param::class)?->type;
-        $type = $this->phpTypes->infer($phpType, $declaredType, $this->declaringClass($parameter), $ownerType);
-
-        $index = count($definitions);
-        $definitions[] = new Parameter($parameter->getName(), $type, $parameter->isOptional(), $parameter->isVariadic());
-
-        $convert = $this->phpTypes->unwrapperFor($phpType);
-        if ($parameter->isVariadic()) {
-            /** @param list<Value> $arguments */
-            return static fn(?Value $value, array $arguments, EvaluationContext $context): array => array_map($convert, array_values(array_slice($arguments, $index)));
-        }
-
-        if ($parameter->isDefaultValueAvailable()) {
-            $default = $parameter->getDefaultValue();
-            return static fn(?Value $value, array $arguments, EvaluationContext $context): array => [isset($arguments[$index]) ? $convert($arguments[$index]) : $default];
-        }
-
-        return static fn(?Value $value, array $arguments, EvaluationContext $context): array => [$convert($arguments[$index])];
-    }
-
-    private function declaringClass(ReflectionParameter $parameter): string {
-        return $parameter->getDeclaringClass()?->getName() ?? $parameter->getDeclaringFunction()->getName();
-    }
-
-    /**
-     * @template T of object
-     * @param ReflectionClass<object>|ReflectionMethod|ReflectionProperty|ReflectionParameter $reflection
-     * @param class-string<T> $attributeClass
-     * @return T|null
-     */
-    private function attribute(ReflectionClass|ReflectionMethod|ReflectionProperty|ReflectionParameter $reflection, string $attributeClass): ?object {
-        return ($reflection->getAttributes($attributeClass)[0] ?? null)?->newInstance();
     }
 }
