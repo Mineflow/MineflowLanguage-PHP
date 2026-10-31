@@ -91,6 +91,6 @@ final readonly class OperatorResolution {
     }
 
     private function actual(Value $value, EvaluationContext $context): Value {
-        return $context->asCollection($value) ?? $value;
+        return $this->invoker->entries($value, $context) ?? $value;
     }
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Mineflow\Language\Runtime;
 
 use Mineflow\Language\Definition\MemberReference;
-use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\UndefinedMember;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Values\CollectionValue;
@@ -39,7 +38,7 @@ final readonly class MemberAccess {
         $entriesType = $this->entriesType($target->type->name);
         if ($entriesType !== null && $this->members->catalog->definition($reference) === null
             && $this->members->catalog->definition(MemberReference::method($entriesType->name, $name)) !== null) {
-            return $this->callMethod($this->entries($target, $context) ?? $target, $name, $arguments, $context);
+            return $this->callMethod($this->invoker->entries($target, $context) ?? $target, $name, $arguments, $context);
         }
 
         return $this->invoke($reference, $target, $arguments, $context);
@@ -66,7 +65,7 @@ final readonly class MemberAccess {
         $entriesType = $this->entriesType($typeName);
         $shared = $entriesType === null ? null : $this->members->find(MemberReference::property($entriesType->name, $name));
         if ($shared !== null) {
-            return $this->invoker->invoke($shared, $this->entries($value, $context), [], $context);
+            return $this->invoker->invoke($shared, $this->invoker->entries($value, $context), [], $context);
         }
 
         $index = $this->members->find(MemberReference::index($typeName));
@@ -75,7 +74,7 @@ final readonly class MemberAccess {
             return $entry;
         }
 
-        $entries = $this->entries($value, $context);
+        $entries = $this->invoker->entries($value, $context);
         if ($entries === null) {
             return null;
         }
@@ -103,20 +102,6 @@ final readonly class MemberAccess {
     private function entriesType(string $typeName): ?CollectionType {
         $returns = $this->members->catalog->definition(MemberReference::entries($typeName))?->returns;
         return $returns instanceof CollectionType ? $returns : null;
-    }
-
-    public function entries(Value $value, EvaluationContext $context): ?CollectionValue {
-        if ($value instanceof CollectionValue) {
-            return $value;
-        }
-
-        $declared = $this->members->find(MemberReference::entries($value->type->name));
-        if ($declared === null) {
-            return null;
-        }
-
-        $entries = $this->invoker->invoke($declared, $value, [], $context);
-        return $entries instanceof CollectionValue ? $entries : throw new InternalError("The entries of $value->type are a $entries->type.");
     }
 
     /**

@@ -7,9 +7,14 @@ use Mineflow\Language\Definition\Catalog;
 use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Format\DefaultValueFormatter;
 use Mineflow\Language\Format\ValueFormatter;
-use Mineflow\Language\Runtime\Interpreter;
+use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Runtime\Evaluator;
+use Mineflow\Language\Runtime\MemberAccess;
+use Mineflow\Language\Runtime\MemberInvoker;
 use Mineflow\Language\Runtime\MemberTable;
+use Mineflow\Language\Runtime\OperatorResolution;
 use Mineflow\Language\Runtime\Scope;
+use Mineflow\Language\Runtime\ValueMapper;
 use Mineflow\Language\Syntax\Node\ConcatenationNode;
 use Mineflow\Language\Syntax\Node\Node;
 use Mineflow\Language\Syntax\Parser;
@@ -17,11 +22,19 @@ use Mineflow\Language\Values\Value;
 
 final readonly class Language {
     public Catalog $catalog;
-    private Interpreter $interpreter;
+    private ValueMapper $valueMapper;
+    private MemberInvoker $invoker;
+    private MemberAccess $memberAccess;
+    private OperatorResolution $operatorResolution;
+    private Evaluator $evaluator;
 
-    public function __construct(MemberTable $members, ValueFormatter $formatter = new DefaultValueFormatter()) {
+    public function __construct(MemberTable $members, private ValueFormatter $formatter = new DefaultValueFormatter()) {
         $this->catalog = $members->catalog;
-        $this->interpreter = new Interpreter($members, $formatter);
+        $this->valueMapper = new ValueMapper($members->catalog->objectTypes);
+        $this->invoker = new MemberInvoker($members);
+        $this->memberAccess = new MemberAccess($members, $this->invoker);
+        $this->operatorResolution = new OperatorResolution($members, $this->invoker);
+        $this->evaluator = new Evaluator();
     }
 
     public static function create(): self {
@@ -32,14 +45,14 @@ final readonly class Language {
      * @param array<string, mixed> $variables
      */
     public function scope(array $variables = []): Scope {
-        return $this->interpreter->scope($variables);
+        return Scope::root($this->valueMapper, $variables);
     }
 
     /**
      * Converts a PHP value to a language value. An object becomes a value of the type declared for its class.
      */
     public function wrap(mixed $value): Value {
-        return $this->interpreter->valueMapper->wrap($value);
+        return $this->valueMapper->wrap($value);
     }
 
     public function parseExpression(string $source): Node {
@@ -55,7 +68,7 @@ final readonly class Language {
      */
     public function evaluate(string|Node $expression, ?Scope $scope = null): Value {
         $node = is_string($expression) ? $this->parseExpression($expression) : $expression;
-        return $this->interpreter->evaluate($node, $scope ?? $this->scope());
+        return $this->evaluator->evaluate($node, $this->context($scope ?? $this->scope()));
     }
 
     /**
@@ -67,7 +80,7 @@ final readonly class Language {
             $node = new ConcatenationNode([$node], $node->start, $node->end);
         }
 
-        return $this->interpreter->render($node, $scope ?? $this->scope());
+        return $this->evaluator->render($node, $this->context($scope ?? $this->scope()));
     }
 
     /**
@@ -85,7 +98,7 @@ final readonly class Language {
             return null;
         }
 
-        $context = $this->interpreter->context($scope);
+        $context = $this->context($scope);
         $value = $scope->get($first);
         foreach ($names as $name) {
             $value = $context->findProperty($value, $name);
@@ -101,6 +114,10 @@ final readonly class Language {
      * @throws LanguageException
      */
     public function text(Value $value): string {
-        return $this->interpreter->context($this->scope())->text($value);
+        return $this->context($this->scope())->text($value);
+    }
+
+    private function context(Scope $scope): EvaluationContext {
+        return new EvaluationContext($scope, $this->valueMapper, $this->memberAccess, $this->operatorResolution, $this->invoker, $this->formatter);
     }
 }

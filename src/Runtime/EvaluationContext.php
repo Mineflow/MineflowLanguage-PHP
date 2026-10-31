@@ -6,6 +6,7 @@ namespace Mineflow\Language\Runtime;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Error\UndefinedMember;
+use Mineflow\Language\Format\ValueFormatter;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Values\CollectionValue;
@@ -16,32 +17,39 @@ use Mineflow\Language\Values\Value;
 use Stringable;
 
 final readonly class EvaluationContext {
-    public function __construct(public Scope $scope, private Interpreter $interpreter) {
+    public function __construct(
+        public Scope               $scope,
+        private ValueMapper        $valueMapper,
+        private MemberAccess       $memberAccess,
+        private OperatorResolution $operatorResolution,
+        private MemberInvoker      $invoker,
+        private ValueFormatter     $formatter,
+    ) {
     }
 
     /**
      * Converts a PHP value to a language value. $expected decides whether an array becomes a list or a map.
      */
     public function wrap(mixed $value, ?Type $expected = null): Value {
-        return $this->interpreter->valueMapper->wrap($value, $expected);
+        return $this->valueMapper->wrap($value, $expected);
     }
 
     public function callMethod(Value $target, string $name, mixed ...$arguments): Value {
-        return $this->interpreter->memberAccess->callMethod($target, $name, $this->wrapAll($arguments), $this);
+        return $this->memberAccess->callMethod($target, $name, $this->wrapAll($arguments), $this);
     }
 
     /**
      * Calls `name(arguments)`.
      */
     public function callFunction(string $name, mixed ...$arguments): Value {
-        return $this->interpreter->memberAccess->callFunction($name, $this->wrapAll($arguments), $this);
+        return $this->memberAccess->callFunction($name, $this->wrapAll($arguments), $this);
     }
 
     /**
      * Calculates `left symbol right`.
      */
     public function operate(BinaryOperator $operator, Value $left, Value $right): Value {
-        return $this->interpreter->operatorResolution->operate($operator, $left, $right, $this);
+        return $this->operatorResolution->operate($operator, $left, $right, $this);
     }
 
     public function property(Value $value, string $name): Value {
@@ -53,7 +61,7 @@ final readonly class EvaluationContext {
      * Reads `value.name` like property(), or null when no meaning of the name applies.
      */
     public function findProperty(Value $value, string $name): ?Value {
-        return $this->interpreter->memberAccess->find($value, $name, $this);
+        return $this->memberAccess->find($value, $name, $this);
     }
 
     /**
@@ -61,18 +69,18 @@ final readonly class EvaluationContext {
      * Returns null if any element has no `name`.
      */
     public function pluck(CollectionValue $collection, string $name): ?CollectionValue {
-        return $this->interpreter->memberAccess->pluck($collection, $name, $this);
+        return $this->memberAccess->pluck($collection, $name, $this);
     }
 
     /**
      * Returns the list or map the value acts as, or null when it acts as neither.
      */
     public function asCollection(Value $value): ?CollectionValue {
-        return $this->interpreter->memberAccess->entries($value, $this);
+        return $this->invoker->entries($value, $this);
     }
 
     public function text(Value $value): string {
-        return ExternalFailure::guard(fn() => $this->interpreter->formatter->format($this->readable($value)));
+        return ExternalFailure::guard(fn() => $this->formatter->format($this->readable($value)));
     }
 
     private function readable(Value $value): Value {
