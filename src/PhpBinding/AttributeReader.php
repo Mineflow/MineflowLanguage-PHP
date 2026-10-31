@@ -21,6 +21,7 @@ use Mineflow\Language\Definition\Parameter;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Runtime\Member;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\NamedType;
@@ -46,12 +47,12 @@ final readonly class AttributeReader {
     /**
      * @param list<object> $extensions
      * @param list<object> $functions
-     * @return list<Declaration>
+     * @return list<Member>
      */
     public function read(array $extensions, array $functions): array {
-        $declarations = [];
+        $members = [];
         foreach ($this->declared->declarers as [$type, $declarer]) {
-            $declarations[] = $this->declarationsOf($type, $declarer);
+            $members[] = $this->membersOf($type, $declarer);
         }
 
         foreach ($extensions as $extension) {
@@ -61,25 +62,25 @@ final readonly class AttributeReader {
                 ? $extended->type()
                 : $this->declared->objectTypes->find($extended) ?? throw new DefinitionError("Unregistered extension target: $extended");
 
-            $declarations[] = $this->declarationsOf($ownerType, $extension);
+            $members[] = $this->membersOf($ownerType, $extension);
         }
 
         foreach ($functions as $functionProvider) {
-            $declarations[] = $this->declarationsOf(null, $functionProvider);
+            $members[] = $this->membersOf(null, $functionProvider);
         }
 
-        return array_merge(...$declarations);
+        return array_merge(...$members);
     }
 
     /**
-     * @return list<Declaration>
+     * @return list<Member>
      */
-    private function declarationsOf(NamedType|CollectionType|null $ownerType, object $instance): array {
+    private function membersOf(NamedType|CollectionType|null $ownerType, object $instance): array {
         $class = new ReflectionClass($instance);
         $global = $ownerType === null;
         $typeName = $ownerType?->name;
 
-        $declarations = [];
+        $members = [];
         foreach ($class->getMethods() as $method) {
             $attributes = $this->memberAttributes($method);
             if ($attributes === []) {
@@ -119,12 +120,12 @@ final readonly class AttributeReader {
                 $call = new PhpMethodCall($definition, $instance, $method->getName(), $extractors);
 
                 foreach ($references as $reference) {
-                    $declarations[] = new Declaration($reference, $definition, $call);
+                    $members[] = new Member(new Declaration($reference, $definition), $call);
                 }
             }
         }
 
-        return $declarations;
+        return $members;
     }
 
     /**

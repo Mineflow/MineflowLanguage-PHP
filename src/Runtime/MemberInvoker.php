@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime;
 
-use Mineflow\Language\Definition\Declaration;
 use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\ReturnTypeMismatch;
@@ -16,16 +15,17 @@ final readonly class MemberInvoker {
     /**
      * @param list<Value> $arguments
      */
-    public function invoke(Declaration $declaration, ?Value $target, array $arguments, EvaluationContext $context): Value {
-        $reference = $declaration->reference;
+    public function invoke(Member $member, ?Value $target, array $arguments, EvaluationContext $context): Value {
+        $reference = $member->declaration->reference;
+        $definition = $member->declaration->definition;
         if ($target?->type->name !== $reference->typeName) {
             throw new InternalError("$reference cannot be called on ".($target === null ? "nothing" : $target->type).".");
         }
 
-        $arguments = $this->argumentBinder->bind($reference, $declaration->definition, $arguments, $target, $context);
-        $result = ExternalFailure::guard(static fn() => $declaration->implementation->call($target, $arguments, $context), $reference);
+        $arguments = $this->argumentBinder->bind($reference, $definition, $arguments, $target, $context);
+        $result = ExternalFailure::guard(static fn() => $member->implementation->call($target, $arguments, $context), $reference);
 
-        $expected = $declaration->definition->resultType($target?->type);
+        $expected = $definition->resultType($target?->type);
         if (!$expected->accepts($result->type)) {
             throw new ReturnTypeMismatch($reference, $expected, $result->type);
         }

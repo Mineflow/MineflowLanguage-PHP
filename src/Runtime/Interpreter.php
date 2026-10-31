@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime;
 
-use Mineflow\Language\Definition\Catalog;
 use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Format\DefaultValueFormatter;
 use Mineflow\Language\Format\ValueFormatter;
@@ -17,11 +16,11 @@ final readonly class Interpreter {
     public OperatorResolution $operatorResolution;
     private Evaluator $evaluator;
 
-    public function __construct(Catalog $catalog, public ValueFormatter $formatter = new DefaultValueFormatter()) {
-        $this->valueMapper = new ValueMapper($catalog->objectTypes);
+    public function __construct(MemberTable $members, public ValueFormatter $formatter = new DefaultValueFormatter()) {
+        $this->valueMapper = new ValueMapper($members->catalog->objectTypes);
         $invoker = new MemberInvoker();
-        $this->memberAccess = new MemberAccess($catalog, $invoker);
-        $this->operatorResolution = new OperatorResolution($catalog, $invoker);
+        $this->memberAccess = new MemberAccess($members, $invoker);
+        $this->operatorResolution = new OperatorResolution($members, $invoker);
         $this->evaluator = new Evaluator();
     }
 

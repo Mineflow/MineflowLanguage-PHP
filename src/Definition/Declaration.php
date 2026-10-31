@@ -4,22 +4,20 @@ declare(strict_types=1);
 namespace Mineflow\Language\Definition;
 
 use Mineflow\Language\Error\DefinitionError;
-use Mineflow\Language\Runtime\MemberImplementation;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\Type;
 
 final readonly class Declaration {
     public function __construct(
-        public MemberReference      $reference,
-        public MemberDefinition     $definition,
-        public MemberImplementation $implementation,
+        public MemberReference  $reference,
+        public MemberDefinition $definition,
     ) {
         self::check($reference, $definition);
     }
 
     public function withTypeName(string $typeName): self {
-        return new self($this->reference->withTypeName($typeName), $this->definition, $this->implementation);
+        return new self($this->reference->withTypeName($typeName), $this->definition);
     }
 
     /**

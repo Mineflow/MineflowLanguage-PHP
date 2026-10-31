@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace Mineflow\Language;
 
-use Mineflow\Language\Definition\Catalog;
 use Mineflow\Language\Format\DefaultValueFormatter;
 use Mineflow\Language\Format\ValueFormatter;
 use Mineflow\Language\PhpBinding\AttributeReader;
 use Mineflow\Language\PhpBinding\DeclaredTypes;
+use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\StandardLibrary\BuiltinFunctions;
 use Mineflow\Language\StandardLibrary\BuiltinMembers;
 
@@ -42,8 +42,8 @@ final class LanguageBuilder {
 
     public function build(): Language {
         $declared = DeclaredTypes::read($this->declarers);
-        $declarations = (new AttributeReader($declared))->read([...BuiltinMembers::all(), ...$this->extensions], [new BuiltinFunctions(), ...$this->functions]);
+        $members = (new AttributeReader($declared))->read([...BuiltinMembers::all(), ...$this->extensions], [new BuiltinFunctions(), ...$this->functions]);
 
-        return new Language(Catalog::from($declared->objectTypes, $declarations), $this->formatter ?? new DefaultValueFormatter());
+        return new Language(MemberTable::from($declared->objectTypes, $members), $this->formatter ?? new DefaultValueFormatter());
     }
 }

@@ -8,6 +8,7 @@ use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Format\DefaultValueFormatter;
 use Mineflow\Language\Format\ValueFormatter;
 use Mineflow\Language\Runtime\Interpreter;
+use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Syntax\Node\ConcatenationNode;
 use Mineflow\Language\Syntax\Node\Node;
@@ -18,9 +19,9 @@ final readonly class Language {
     public Catalog $catalog;
     private Interpreter $interpreter;
 
-    public function __construct(Catalog $catalog, ValueFormatter $formatter = new DefaultValueFormatter()) {
-        $this->catalog = $catalog;
-        $this->interpreter = new Interpreter($catalog, $formatter);
+    public function __construct(MemberTable $members, ValueFormatter $formatter = new DefaultValueFormatter()) {
+        $this->catalog = $members->catalog;
+        $this->interpreter = new Interpreter($members, $formatter);
     }
 
     public static function create(): self {

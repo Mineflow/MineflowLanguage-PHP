@@ -15,25 +15,13 @@ use Mineflow\Language\Definition\Parameter;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
-use Mineflow\Language\Runtime\EvaluationContext;
-use Mineflow\Language\Runtime\MemberImplementation;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Tests\Fixtures\Settings;
 use Mineflow\Language\Tests\Fixtures\SettingsType;
 use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\ObjectTypes;
 use Mineflow\Language\Types\Type;
-use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
-
-/**
- * Members implemented without attributes.
- */
-final class Shout implements MemberImplementation {
-    public function call(?Value $target, array $arguments, EvaluationContext $context): Value {
-        return Value::from(strtoupper($context->text($target ?? $arguments[0])));
-    }
-}
 
 #[DeclareType(Badge::class, name: "badge")]
 final class Badge {
@@ -59,18 +47,6 @@ final class Greetings {
 }
 
 final class CatalogTest extends TestCase {
-    public function testAMemberNeedsNoAttributeToBeCalled(): void {
-        $catalog = Catalog::from(new ObjectTypes(), [
-            $this->declare(MemberReference::method("string", "shout")),
-            $this->declare(MemberReference::function("shout"), [new Parameter("text", Type::string())]),
-        ]);
-        $language = new Language($catalog);
-        $scope = $language->scope(["word" => "hi"]);
-
-        self::assertSame("HI", $language->evaluate("word.shout()", $scope)->native());
-        self::assertSame("HEY", $language->evaluate("shout(hey)")->native());
-    }
-
     public function testABrokenDeclarationIsRefused(): void {
         $text = new Parameter("text", Type::string());
         $slot = new Parameter("slot", Type::number());
@@ -180,6 +156,6 @@ final class CatalogTest extends TestCase {
      * @param list<Parameter> $parameters
      */
     private function declare(MemberReference $reference, array $parameters = []): Declaration {
-        return new Declaration($reference, new MemberDefinition(Type::string(), $parameters), new Shout());
+        return new Declaration($reference, new MemberDefinition(Type::string(), $parameters));
     }
 }

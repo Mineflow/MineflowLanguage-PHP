@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime;
 
-use Mineflow\Language\Definition\Catalog;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\UndefinedMember;
@@ -29,7 +28,7 @@ use Mineflow\Language\Values\Value;
  * is called on its collection of entries, if the collection has it.
  */
 final readonly class MemberAccess {
-    public function __construct(private Catalog $catalog, private MemberInvoker $invoker) {
+    public function __construct(private MemberTable $members, private MemberInvoker $invoker) {
     }
 
     /**
@@ -38,8 +37,8 @@ final readonly class MemberAccess {
     public function callMethod(Value $target, string $name, array $arguments, EvaluationContext $context): Value {
         $reference = MemberReference::method($target->type->name, $name);
         $entriesType = $this->entriesType($target->type->name);
-        if ($entriesType !== null && $this->catalog->declaration($reference) === null
-            && $this->catalog->declaration(MemberReference::method($entriesType->name, $name)) !== null) {
+        if ($entriesType !== null && $this->members->catalog->definition($reference) === null
+            && $this->members->catalog->definition(MemberReference::method($entriesType->name, $name)) !== null) {
             return $this->callMethod($this->entries($target, $context) ?? $target, $name, $arguments, $context);
         }
 
@@ -55,7 +54,7 @@ final readonly class MemberAccess {
 
     public function find(Value $value, string $name, EvaluationContext $context): ?Value {
         $typeName = $value->type->name;
-        $declared = $this->catalog->declaration(MemberReference::property($typeName, $name));
+        $declared = $this->members->find(MemberReference::property($typeName, $name));
         if ($declared !== null) {
             return $this->invoker->invoke($declared, $value, [], $context);
         }
@@ -65,12 +64,12 @@ final readonly class MemberAccess {
         }
 
         $entriesType = $this->entriesType($typeName);
-        $shared = $entriesType === null ? null : $this->catalog->declaration(MemberReference::property($entriesType->name, $name));
+        $shared = $entriesType === null ? null : $this->members->find(MemberReference::property($entriesType->name, $name));
         if ($shared !== null) {
             return $this->invoker->invoke($shared, $this->entries($value, $context), [], $context);
         }
 
-        $index = $this->catalog->declaration(MemberReference::index($typeName));
+        $index = $this->members->find(MemberReference::index($typeName));
         $entry = $index === null ? null : $this->invoker->invoke($index, $value, [new StringValue($name)], $context);
         if ($entry !== null && !$entry instanceof NullValue) {
             return $entry;
@@ -102,7 +101,7 @@ final readonly class MemberAccess {
     }
 
     private function entriesType(string $typeName): ?CollectionType {
-        $returns = $this->catalog->definition(MemberReference::entries($typeName))?->returns;
+        $returns = $this->members->catalog->definition(MemberReference::entries($typeName))?->returns;
         return $returns instanceof CollectionType ? $returns : null;
     }
 
@@ -111,7 +110,7 @@ final readonly class MemberAccess {
             return $value;
         }
 
-        $declared = $this->catalog->declaration(MemberReference::entries($value->type->name));
+        $declared = $this->members->find(MemberReference::entries($value->type->name));
         if ($declared === null) {
             return null;
         }
@@ -124,7 +123,7 @@ final readonly class MemberAccess {
      * @param list<Value> $arguments
      */
     private function invoke(MemberReference $reference, ?Value $target, array $arguments, EvaluationContext $context): Value {
-        $declaration = $this->catalog->declaration($reference) ?? throw new UndefinedMember($reference);
-        return $this->invoker->invoke($declaration, $target, $arguments, $context);
+        $member = $this->members->find($reference) ?? throw new UndefinedMember($reference);
+        return $this->invoker->invoke($member, $target, $arguments, $context);
     }
 }

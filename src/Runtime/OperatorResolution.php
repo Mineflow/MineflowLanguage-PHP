@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime;
 
-use Mineflow\Language\Definition\Catalog;
-use Mineflow\Language\Definition\Declaration;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Syntax\BinaryOperator;
@@ -21,7 +19,7 @@ use Mineflow\Language\Values\Value;
  * If it cannot be computed, the error names the types of both operands as written.
  */
 final readonly class OperatorResolution {
-    public function __construct(private Catalog $catalog, private MemberInvoker $invoker) {
+    public function __construct(private MemberTable $members, private MemberInvoker $invoker) {
     }
 
     public function operate(BinaryOperator $operator, Value $left, Value $right, EvaluationContext $context): Value {
@@ -68,12 +66,12 @@ final readonly class OperatorResolution {
             return false;
         }
 
-        $origin = $this->catalog->origin(MemberReference::reflectedOperator($right->type->name, $operator))?->typeName;
+        $origin = $this->members->catalog->origin(MemberReference::reflectedOperator($right->type->name, $operator))?->typeName;
         if ($origin === $right->type->name) {
             return true;
         }
 
-        foreach ($this->catalog->objectTypes->ancestors($right->type->name) as $ancestor) {
+        foreach ($this->members->catalog->objectTypes->ancestors($right->type->name) as $ancestor) {
             if ($ancestor->name === $origin) {
                 return $ancestor->name !== $left->type->name && $left->type->accepts($ancestor);
             }
@@ -85,10 +83,10 @@ final readonly class OperatorResolution {
     /**
      * The operator on the target value's type that accepts the other operand, or null.
      */
-    private function accepting(MemberReference $operator, Value $target, Value $operand): ?Declaration {
-        $declaration = $this->catalog->declaration($operator);
-        return $declaration !== null && $declaration->definition->parameters[0]->type->resolvePlaceholders($target->type)->accepts($operand->type)
-            ? $declaration
+    private function accepting(MemberReference $operator, Value $target, Value $operand): ?Member {
+        $member = $this->members->find($operator);
+        return $member !== null && $member->declaration->definition->parameters[0]->type->resolvePlaceholders($target->type)->accepts($operand->type)
+            ? $member
             : null;
     }
 
