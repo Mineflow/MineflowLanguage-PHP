@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Tests\Runtime;
+namespace Mineflow\Language\Tests\Values;
 
 use Mineflow\Language\Error\InvalidValue;
-use Mineflow\Language\Runtime\ValueMapper;
 use Mineflow\Language\Types\ObjectTypes;
 use Mineflow\Language\Types\Type;
+use Mineflow\Language\Values\ValueMapper;
 use PHPUnit\Framework\TestCase;
 
 class Weapon {

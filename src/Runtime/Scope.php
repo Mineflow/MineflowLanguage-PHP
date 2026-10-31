@@ -6,6 +6,7 @@ namespace Mineflow\Language\Runtime;
 use Mineflow\Language\Error\UndefinedVariable;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Values\Value;
+use Mineflow\Language\Values\ValueMapper;
 
 /**
  * Names and values that source code refers to. A name not found here is looked up through the parents.

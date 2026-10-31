@@ -1,10 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Runtime;
+namespace Mineflow\Language\Runtime\Engine;
 
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\UnsupportedCalculation;
+use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Runtime\Member;
+use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Values\Value;
 

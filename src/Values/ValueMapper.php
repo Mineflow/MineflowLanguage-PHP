@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Runtime;
+namespace Mineflow\Language\Values;
 
 use Mineflow\Language\Error\InvalidValue;
 use Mineflow\Language\Types\CollectionType;
@@ -10,14 +10,6 @@ use Mineflow\Language\Types\MapType;
 use Mineflow\Language\Types\ObjectTypes;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Types\UnionType;
-use Mineflow\Language\Values\BooleanValue;
-use Mineflow\Language\Values\ListValue;
-use Mineflow\Language\Values\MapValue;
-use Mineflow\Language\Values\NullValue;
-use Mineflow\Language\Values\NumberValue;
-use Mineflow\Language\Values\ObjectValue;
-use Mineflow\Language\Values\StringValue;
-use Mineflow\Language\Values\Value;
 
 /**
  * Converts PHP values to language values.

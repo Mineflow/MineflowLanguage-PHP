@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Runtime;
+namespace Mineflow\Language\Runtime\Engine;
 
 use Closure;
 use Mineflow\Language\Definition\MemberDefinition;

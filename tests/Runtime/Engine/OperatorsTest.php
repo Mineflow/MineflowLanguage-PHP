@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Tests\Runtime;
+namespace Mineflow\Language\Tests\Runtime\Engine;
 
 use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Attribute\ExtendType;

@@ -3,105 +3,61 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime;
 
-use Mineflow\Language\Definition\MemberReference;
-use Mineflow\Language\Error\ExternalFailure;
-use Mineflow\Language\Error\UndefinedMember;
-use Mineflow\Language\Format\ValueFormatter;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Values\CollectionValue;
-use Mineflow\Language\Values\ListValue;
-use Mineflow\Language\Values\MapValue;
-use Mineflow\Language\Values\ObjectValue;
 use Mineflow\Language\Values\Value;
-use Stringable;
 
-final readonly class EvaluationContext {
-    public function __construct(
-        public Scope               $scope,
-        private ValueMapper        $valueMapper,
-        private MemberAccess       $memberAccess,
-        private OperatorResolution $operatorResolution,
-        private MemberInvoker      $invoker,
-        private ValueFormatter     $formatter,
-    ) {
-    }
+/**
+ * What a member that takes #[FromContext] can do: read the scope of the source being evaluated, and work with values
+ * the way a source does. An argument may be any PHP value a scope takes.
+ */
+interface EvaluationContext {
+    public function scope(): Scope;
 
     /**
      * Converts a PHP value to a language value. $expected decides whether an array becomes a list or a map.
      */
-    public function wrap(mixed $value, ?Type $expected = null): Value {
-        return $this->valueMapper->wrap($value, $expected);
-    }
+    public function wrap(mixed $value, ?Type $expected = null): Value;
 
-    public function callMethod(Value $target, string $name, mixed ...$arguments): Value {
-        return $this->memberAccess->callMethod($target, $name, $this->wrapAll($arguments), $this);
-    }
+    /**
+     * Calls `target.name(arguments)`.
+     */
+    public function callMethod(Value $target, string $name, mixed ...$arguments): Value;
 
     /**
      * Calls `name(arguments)`.
      */
-    public function callFunction(string $name, mixed ...$arguments): Value {
-        return $this->memberAccess->callFunction($name, $this->wrapAll($arguments), $this);
-    }
+    public function callFunction(string $name, mixed ...$arguments): Value;
 
     /**
      * Calculates `left symbol right`.
      */
-    public function operate(BinaryOperator $operator, Value $left, Value $right): Value {
-        return $this->operatorResolution->operate($operator, $left, $right, $this);
-    }
+    public function operate(BinaryOperator $operator, Value $left, Value $right): Value;
 
-    public function property(Value $value, string $name): Value {
-        return $this->findProperty($value, $name)
-            ?? throw new UndefinedMember(MemberReference::property((string)$value->type, $name));
-    }
+    /**
+     * Reads `value.name`.
+     */
+    public function property(Value $value, string $name): Value;
 
     /**
      * Reads `value.name` like property(), or null when no meaning of the name applies.
      */
-    public function findProperty(Value $value, string $name): ?Value {
-        return $this->memberAccess->find($value, $name, $this);
-    }
+    public function findProperty(Value $value, string $name): ?Value;
 
     /**
      * Gets `name` from each element of the collection, even if the collection itself has `name`.
      * Returns null if any element has no `name`.
      */
-    public function pluck(CollectionValue $collection, string $name): ?CollectionValue {
-        return $this->memberAccess->pluck($collection, $name, $this);
-    }
+    public function pluck(CollectionValue $collection, string $name): ?CollectionValue;
 
     /**
      * Returns the list or map the value acts as, or null when it acts as neither.
      */
-    public function asCollection(Value $value): ?CollectionValue {
-        return $this->invoker->entries($value, $this);
-    }
-
-    public function text(Value $value): string {
-        return ExternalFailure::guard(fn() => $this->formatter->format($this->readable($value)));
-    }
-
-    private function readable(Value $value): Value {
-        if ($value instanceof CollectionValue) {
-            $items = array_map($this->readable(...), $value->items());
-            return $value instanceof ListValue ? new ListValue(array_values($items)) : new MapValue($items);
-        }
-
-        if ($value instanceof ObjectValue && $value->value instanceof Stringable) {
-            return $value;
-        }
-
-        $collection = $this->asCollection($value);
-        return $collection === null ? $value : $this->readable($collection);
-    }
+    public function asCollection(Value $value): ?CollectionValue;
 
     /**
-     * @param array<mixed> $arguments
-     * @return list<Value>
+     * Writes the value as text, the way a template writes it.
      */
-    private function wrapAll(array $arguments): array {
-        return array_values(array_map($this->wrap(...), $arguments));
-    }
+    public function text(Value $value): string;
 }

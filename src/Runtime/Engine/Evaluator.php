@@ -1,13 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Runtime;
+namespace Mineflow\Language\Runtime\Engine;
 
 use Closure;
 use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Error\SourceError;
 use Mineflow\Language\Format\DefaultValueFormatter;
+use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Syntax\Node\BinaryExpressionNode;
 use Mineflow\Language\Syntax\Node\ComputedIdentifierNode;
@@ -79,8 +81,8 @@ final readonly class Evaluator {
             NameNode::class => new StringValue($node->name),
             ComputedNameNode::class => $this->evaluate($node->name, $context),
             ConcatenationNode::class => new StringValue($this->concatenate($node, $context->text(...), $context)),
-            IdentifierNode::class => $context->scope->get($node->name),
-            ComputedIdentifierNode::class => $this->resolve($this->name($node->name, $context), $context->scope),
+            IdentifierNode::class => $context->scope()->get($node->name),
+            ComputedIdentifierNode::class => $this->resolve($this->name($node->name, $context), $context->scope()),
             ParenthesizedNode::class => $this->evaluate($node->expression, $context),
             BinaryExpressionNode::class => $context->operate($node->operator, $this->evaluate($node->left, $context), $this->evaluate($node->right, $context)),
             UnaryExpressionNode::class => $this->evaluatePrefix($node->operator, $this->evaluate($node->operand, $context), $context),

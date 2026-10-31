@@ -41,6 +41,6 @@ final class BuiltinFunctions {
 
     #[Method(type: new MapOf(Special::Mixed, Builtin::String), description: "Every global, by name: what is read outside the run.")]
     public function vars(#[FromContext] EvaluationContext $context): MapValue {
-        return new MapValue($context->scope->globals());
+        return new MapValue($context->scope()->globals());
     }
 }

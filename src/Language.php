@@ -7,18 +7,19 @@ use Mineflow\Language\Definition\Catalog;
 use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Format\DefaultValueFormatter;
 use Mineflow\Language\Format\ValueFormatter;
+use Mineflow\Language\Runtime\Engine\Context;
+use Mineflow\Language\Runtime\Engine\Evaluator;
+use Mineflow\Language\Runtime\Engine\MemberAccess;
+use Mineflow\Language\Runtime\Engine\MemberInvoker;
+use Mineflow\Language\Runtime\Engine\OperatorResolution;
 use Mineflow\Language\Runtime\EvaluationContext;
-use Mineflow\Language\Runtime\Evaluator;
-use Mineflow\Language\Runtime\MemberAccess;
-use Mineflow\Language\Runtime\MemberInvoker;
 use Mineflow\Language\Runtime\MemberTable;
-use Mineflow\Language\Runtime\OperatorResolution;
 use Mineflow\Language\Runtime\Scope;
-use Mineflow\Language\Runtime\ValueMapper;
 use Mineflow\Language\Syntax\Node\ConcatenationNode;
 use Mineflow\Language\Syntax\Node\Node;
 use Mineflow\Language\Syntax\Parser;
 use Mineflow\Language\Values\Value;
+use Mineflow\Language\Values\ValueMapper;
 
 final readonly class Language {
     public Catalog $catalog;
@@ -118,6 +119,6 @@ final readonly class Language {
     }
 
     private function context(Scope $scope): EvaluationContext {
-        return new EvaluationContext($scope, $this->valueMapper, $this->memberAccess, $this->operatorResolution, $this->invoker, $this->formatter);
+        return new Context($scope, $this->valueMapper, $this->memberAccess, $this->operatorResolution, $this->invoker, $this->formatter);
     }
 }

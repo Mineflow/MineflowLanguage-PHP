@@ -1,12 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Runtime;
+namespace Mineflow\Language\Runtime\Engine;
 
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\ReturnTypeMismatch;
+use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Runtime\Member;
+use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Values\CollectionValue;
 use Mineflow\Language\Values\Value;
 

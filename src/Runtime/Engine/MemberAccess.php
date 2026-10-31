@@ -1,10 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Runtime;
+namespace Mineflow\Language\Runtime\Engine;
 
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\UndefinedMember;
+use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Values\CollectionValue;
 use Mineflow\Language\Values\ListValue;
