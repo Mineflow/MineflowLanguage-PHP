@@ -50,6 +50,10 @@ final readonly class PlayerValue extends Value {
     public function party(): array {
         return [$this];
     }
+
+    public function __toString(): string {
+        return "player";
+    }
 }
 
 #[DeclareType("roster", typeHint: new ListOf(PlayerValue::class))]

@@ -8,7 +8,6 @@ use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Attribute\Index;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Property;
-use Mineflow\Language\Error\NoTextRepresentation;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Types\DeclaredType;
 use Mineflow\Language\Types\Expression\CollectionOf;
@@ -16,7 +15,6 @@ use Mineflow\Language\Types\Expression\ListOf;
 use Mineflow\Language\Types\Expression\Nullable;
 use Mineflow\Language\Types\Placeholder;
 use Mineflow\Language\Types\Special;
-use Stringable;
 
 #[DeclareType("collection")]
 abstract readonly class CollectionValue extends Value {
@@ -121,9 +119,5 @@ abstract readonly class CollectionValue extends Value {
      */
     protected function withItems(array $items): self {
         return new MapValue($items);
-    }
-
-    protected static function textOf(Value $item): string {
-        return $item instanceof Stringable ? (string)$item : throw new NoTextRepresentation($item->type());
     }
 }

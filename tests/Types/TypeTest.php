@@ -20,10 +20,16 @@ use PHPUnit\Framework\TestCase;
 
 #[DeclareType("thing")]
 readonly class ThingValue extends Value {
+    public function __toString(): string {
+        return "thing";
+    }
 }
 
 #[DeclareType("other_thing")]
 final readonly class OtherThingValue extends Value {
+    public function __toString(): string {
+        return "other thing";
+    }
 }
 
 final class TypeTest extends TestCase {

@@ -4,19 +4,16 @@ declare(strict_types=1);
 namespace Mineflow\Language\Values;
 
 use Mineflow\Language\Attribute\DeclareType;
-use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Attribute\FromNative;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
 use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Attribute\Property;
-use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Special;
-use Stringable;
 
 #[DeclareType("string")]
-readonly class StringValue extends Value implements Stringable {
+readonly class StringValue extends Value {
     public function __construct(public string $value) {
     }
 
@@ -57,13 +54,13 @@ readonly class StringValue extends Value implements Stringable {
     }
 
     #[Operator(BinaryOperator::Add, description: "The string followed by the text of the right operand.")]
-    public function concatenate(#[Param(Special::Mixed)] Value $right, #[FromContext] EvaluationContext $context): string {
-        return $this->value.$context->text($right);
+    public function concatenate(#[Param(Special::Mixed)] Value $right): string {
+        return $this->value.$right;
     }
 
     #[Operator(BinaryOperator::Subtract, description: "The string with every occurrence of the text of the right operand removed.")]
-    public function remove(#[Param(Special::Mixed)] Value $right, #[FromContext] EvaluationContext $context): string {
-        $text = $context->text($right);
+    public function remove(#[Param(Special::Mixed)] Value $right): string {
+        $text = (string)$right;
         return $text === "" ? $this->value : str_replace($text, "", $this->value);
     }
 

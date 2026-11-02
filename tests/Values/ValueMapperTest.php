@@ -14,6 +14,9 @@ use PHPUnit\Framework\TestCase;
 
 #[DeclareType("weapon")]
 readonly class WeaponValue extends Value {
+    public function __toString(): string {
+        return "weapon";
+    }
 }
 
 final readonly class SwordValue extends WeaponValue {
@@ -21,6 +24,9 @@ final readonly class SwordValue extends WeaponValue {
 
 #[DeclareType("shield")]
 final readonly class ShieldValue extends Value {
+    public function __toString(): string {
+        return "shield";
+    }
 }
 
 final class ValueMapperTest extends TestCase {

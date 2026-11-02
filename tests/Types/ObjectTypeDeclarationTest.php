@@ -41,6 +41,10 @@ final readonly class ItemValue extends Value {
     public function label(): string {
         return $this->item->label;
     }
+
+    public function __toString(): string {
+        return "item";
+    }
 }
 
 #[ExtendType(ItemValue::class)]
@@ -53,25 +57,43 @@ final class ItemExtras {
 
 #[DeclareType]
 final readonly class UnnamedValue extends Value {
+    public function __toString(): string {
+        return "unnamed";
+    }
 }
 
 #[DeclareType("string")]
 final readonly class BuiltinNameValue extends Value {
+    public function __toString(): string {
+        return "builtin name";
+    }
 }
 
 #[DeclareType("item")]
 final readonly class SameNameValue extends Value {
+    public function __toString(): string {
+        return "same name";
+    }
 }
 
 #[DeclareType("mixed")]
 final readonly class SpecialNameValue extends Value {
+    public function __toString(): string {
+        return "special name";
+    }
 }
 
 #[DeclareType("list<number>")]
 final readonly class NotAWordValue extends Value {
+    public function __toString(): string {
+        return "not a word";
+    }
 }
 
 final readonly class UndeclaredValue extends Value {
+    public function __toString(): string {
+        return "undeclared";
+    }
 }
 
 #[DeclareType("plain")]
@@ -100,6 +122,9 @@ final readonly class MapForAListValue extends ListValue {
 
 #[DeclareType("thing", typeHint: new ListOf(StringValue::class))]
 final readonly class CollectionOfAPlainValue extends Value {
+    public function __toString(): string {
+        return "collection of a plain";
+    }
 }
 
 #[DeclareType("tree", typeHint: new MapOf(TreeValue::class))]
@@ -116,6 +141,10 @@ final readonly class LiveValue extends CollectionValue {
 
     public function items(): array {
         return $this->shelf->items;
+    }
+
+    public function __toString(): string {
+        return "live";
     }
 }
 
@@ -157,6 +186,10 @@ final readonly class ConvertedItemValue extends Value {
     public static function fromItem(Item $item): self {
         return new self($item);
     }
+
+    public function __toString(): string {
+        return "converted item";
+    }
 }
 
 #[DeclareType("other_converted")]
@@ -165,6 +198,10 @@ final readonly class OtherConvertedItemValue extends Value {
     public static function fromItem(Item $item): self {
         return new self();
     }
+
+    public function __toString(): string {
+        return "other converted item";
+    }
 }
 
 #[DeclareType("wrong_return")]
@@ -172,6 +209,10 @@ final readonly class WrongReturnValue extends Value {
     #[FromNative]
     public static function fromItem(Item $item): ItemValue {
         return new ItemValue($item);
+    }
+
+    public function __toString(): string {
+        return "wrong return";
     }
 }
 
@@ -183,6 +224,10 @@ final readonly class ArrayConverterValue extends Value {
     #[FromNative]
     public static function fromArray(array $items): self {
         return new self();
+    }
+
+    public function __toString(): string {
+        return "array converter";
     }
 }
 

@@ -5,8 +5,6 @@ namespace Mineflow\Language;
 
 use Mineflow\Language\Definition\Catalog;
 use Mineflow\Language\Error\LanguageException;
-use Mineflow\Language\Format\DefaultValueFormatter;
-use Mineflow\Language\Format\ValueFormatter;
 use Mineflow\Language\Runtime\Engine\Context;
 use Mineflow\Language\Runtime\Engine\Evaluator;
 use Mineflow\Language\Runtime\Engine\MemberAccess;
@@ -29,7 +27,7 @@ final readonly class Language {
     private OperatorResolution $operatorResolution;
     private Evaluator $evaluator;
 
-    public function __construct(MemberTable $members, private ValueFormatter $formatter = new DefaultValueFormatter()) {
+    public function __construct(MemberTable $members) {
         $this->catalog = $members->catalog;
         $this->valueMapper = new ValueMapper($members->catalog->types);
         $this->invoker = new MemberInvoker();
@@ -111,15 +109,7 @@ final readonly class Language {
         return $value;
     }
 
-    /**
-     * Writes the value the way a template would.
-     * @throws LanguageException
-     */
-    public function text(Value $value): string {
-        return $this->context($this->scope())->text($value);
-    }
-
     private function context(Scope $scope): EvaluationContext {
-        return new Context($scope, $this->valueMapper, $this->memberAccess, $this->operatorResolution, $this->formatter);
+        return new Context($scope, $this->valueMapper, $this->memberAccess, $this->operatorResolution);
     }
 }

@@ -18,6 +18,9 @@ use PHPUnit\Framework\TestCase;
 
 #[DeclareType("coin")]
 final readonly class CoinValue extends Value {
+    public function __toString(): string {
+        return "coin";
+    }
 }
 
 #[DeclareType("letters", typeHint: new ListOf(StringValue::class))]

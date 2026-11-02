@@ -16,13 +16,12 @@ use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\TypeDeclarations;
 use Mineflow\Language\Values\Value;
 use Mineflow\Language\Values\ValueMapper;
-use Stringable;
 
 /**
  * A collection over a PHP object the language cannot change, read afresh every time its items are reached.
  */
 #[DeclareType("settings", typeHint: new CollectionOf(Special::Mixed, StringValue::class))]
-final readonly class SettingsValue extends CollectionValue implements Stringable {
+final readonly class SettingsValue extends CollectionValue {
     public function __construct(public Settings $settings) {
     }
 

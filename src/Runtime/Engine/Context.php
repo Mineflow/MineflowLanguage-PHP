@@ -4,9 +4,7 @@ declare(strict_types=1);
 namespace Mineflow\Language\Runtime\Engine;
 
 use Mineflow\Language\Definition\MemberReference;
-use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Error\UndefinedMember;
-use Mineflow\Language\Format\ValueFormatter;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Syntax\BinaryOperator;
@@ -20,7 +18,6 @@ final readonly class Context implements EvaluationContext {
         private ValueMapper        $valueMapper,
         private MemberAccess       $memberAccess,
         private OperatorResolution $operatorResolution,
-        private ValueFormatter     $formatter,
     ) {
     }
 
@@ -51,10 +48,6 @@ final readonly class Context implements EvaluationContext {
 
     public function findProperty(Value $value, string $name): ?Value {
         return $this->memberAccess->find($value, $name, $this);
-    }
-
-    public function text(Value $value): string {
-        return ExternalFailure::guard(fn() => $this->formatter->format($value));
     }
 
     /**

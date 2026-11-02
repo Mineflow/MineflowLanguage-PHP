@@ -106,7 +106,7 @@ final class MemberDeclarationsTest extends TestCase {
         class {
             #[Method]
             public function shout(#[FromContext] EvaluationContext $context, string $value): string {
-                return $context->text(new StringValue($value));
+                return $value;
             }
         })->build();
     }

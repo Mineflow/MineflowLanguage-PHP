@@ -10,10 +10,9 @@ use Mineflow\Language\Attribute\Operator;
 use Mineflow\Language\Attribute\Property;
 use Mineflow\Language\Error\DivisionByZero;
 use Mineflow\Language\Syntax\BinaryOperator;
-use Stringable;
 
 #[DeclareType("number")]
-readonly class NumberValue extends Value implements Stringable {
+readonly class NumberValue extends Value {
     public function __construct(public int|float $value) {
     }
 

@@ -16,10 +16,9 @@ use Mineflow\Language\Types\DeclaredType;
 use Mineflow\Language\Types\Expression\MapOf;
 use Mineflow\Language\Types\Placeholder;
 use Mineflow\Language\Types\Special;
-use Stringable;
 
 #[DeclareType("map")]
-readonly class MapValue extends CollectionValue implements Stringable {
+readonly class MapValue extends CollectionValue {
     private CollectionType $type;
 
     /**
@@ -54,7 +53,7 @@ readonly class MapValue extends CollectionValue implements Stringable {
 
     public function __toString(): string {
         return "<".implode(",", array_map(
-            static fn(string|int $key, Value $item) => $key.":".self::textOf($item),
+            static fn(string|int $key, Value $item) => $key.":".$item,
             array_keys($this->items),
             array_values($this->items),
         )).">";

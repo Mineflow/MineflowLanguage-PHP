@@ -7,10 +7,9 @@ use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Attribute\FromNative;
 use Mineflow\Language\Attribute\Operator;
 use Mineflow\Language\Syntax\BinaryOperator;
-use Stringable;
 
 #[DeclareType("boolean")]
-readonly class BooleanValue extends Value implements Stringable {
+readonly class BooleanValue extends Value {
     public function __construct(public bool $value) {
     }
 

@@ -38,6 +38,10 @@ final readonly class MetersValue extends Value {
     public function addedTo(MetersValue $other): MetersValue {
         return new MetersValue($other->value + $this->value);
     }
+
+    public function __toString(): string {
+        return "meters";
+    }
 }
 
 #[ExtendType(NumberValue::class)]

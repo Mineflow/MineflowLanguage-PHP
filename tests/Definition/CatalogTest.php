@@ -36,6 +36,10 @@ final readonly class Badge extends Value {
     public function repeat(int $times = 2): string {
         return str_repeat($this->label, $times);
     }
+
+    public function __toString(): string {
+        return "badge";
+    }
 }
 
 final class Greetings {

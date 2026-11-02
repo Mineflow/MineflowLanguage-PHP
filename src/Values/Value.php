@@ -4,8 +4,9 @@ declare(strict_types=1);
 namespace Mineflow\Language\Values;
 
 use Mineflow\Language\Types\DeclaredType;
+use Stringable;
 
-abstract readonly class Value {
+abstract readonly class Value implements Stringable {
     public function type(): DeclaredType {
         return TypeDeclarations::of($this::class);
     }
@@ -16,4 +17,6 @@ abstract readonly class Value {
     public function native(): mixed {
         return $this;
     }
+
+    abstract public function __toString(): string;
 }

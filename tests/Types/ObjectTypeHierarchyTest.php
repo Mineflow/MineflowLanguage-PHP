@@ -70,6 +70,10 @@ readonly class CreatureValue extends Value {
     public function timesFrom(CreatureValue $other): string {
         return "creature reflected";
     }
+
+    public function __toString(): string {
+        return "creature";
+    }
 }
 
 #[DeclareType("animal")]
@@ -146,6 +150,10 @@ final readonly class BackpackValue extends Value implements BagValue {
     public function size(): int {
         return count($this->items);
     }
+
+    public function __toString(): string {
+        return "backpack";
+    }
 }
 
 #[DeclareType("pouch")]
@@ -161,6 +169,10 @@ final readonly class PouchValue extends Value implements BagValue {
     public function size(): int {
         return 1;
     }
+
+    public function __toString(): string {
+        return "pouch";
+    }
 }
 
 #[DeclareType("operand")]
@@ -172,6 +184,10 @@ readonly class OperatorBaseValue extends Value {
     #[Operator(BinaryOperator::Multiply)]
     public function times(OperatorBaseValue $other): string {
         return "base";
+    }
+
+    public function __toString(): string {
+        return "operator base";
     }
 }
 
@@ -221,6 +237,10 @@ final readonly class ParcelValue extends Value implements SealedValue, TaggedVal
 
     public function jsonSerialize(): mixed {
         return null;
+    }
+
+    public function __toString(): string {
+        return "parcel";
     }
 }
 

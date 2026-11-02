@@ -43,9 +43,4 @@ interface EvaluationContext {
      * Reads `value.name` like property(), or null when neither a property nor the index of its type gives the name.
      */
     public function findProperty(Value $value, string $name): ?Value;
-
-    /**
-     * Writes the value as text, the way a template writes it.
-     */
-    public function text(Value $value): string;
 }

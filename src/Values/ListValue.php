@@ -18,10 +18,9 @@ use Mineflow\Language\Types\Expression\CollectionOf;
 use Mineflow\Language\Types\Expression\ListOf;
 use Mineflow\Language\Types\Placeholder;
 use Mineflow\Language\Types\Special;
-use Stringable;
 
 #[DeclareType("list", typeHint: new CollectionOf(key: NumberValue::class))]
-readonly class ListValue extends CollectionValue implements Stringable {
+readonly class ListValue extends CollectionValue {
     private CollectionType $type;
 
     /**
@@ -63,7 +62,7 @@ readonly class ListValue extends CollectionValue implements Stringable {
     }
 
     public function __toString(): string {
-        return "[".implode(",", array_map(self::textOf(...), $this->items))."]";
+        return "[".implode(",", array_map(strval(...), $this->items))."]";
     }
 
     #[Method(type: new ListOf(Placeholder::Element), aliases: ["reversed"], description: "The items in reverse order.")]
@@ -89,8 +88,8 @@ readonly class ListValue extends CollectionValue implements Stringable {
     }
 
     #[Method(description: "Joins the textual form of every item, the form a template would render it in.")]
-    public function join(#[FromContext] EvaluationContext $context, string $separator = ","): string {
-        return implode($separator, array_map($context->text(...), $this->items));
+    public function join(string $separator = ","): string {
+        return implode($separator, array_map(strval(...), $this->items));
     }
 
     #[Operator(BinaryOperator::Add, description: "Every item with the right operand added to it.")]

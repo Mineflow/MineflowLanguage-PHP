@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class Shout implements MemberImplementation {
     public function call(?Value $target, array $arguments, EvaluationContext $context): Value {
-        return new StringValue(strtoupper($context->text($target ?? $arguments[0])));
+        return new StringValue(strtoupper((string)($target ?? $arguments[0])));
     }
 }
 

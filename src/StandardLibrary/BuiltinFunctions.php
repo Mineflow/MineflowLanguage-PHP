@@ -30,13 +30,13 @@ final class BuiltinFunctions {
     }
 
     #[Method(description: "The text of the value, the form a template would render it in; empty without one.")]
-    public function str(#[FromContext] EvaluationContext $context, #[Param(Special::Mixed)] ?Value $value = null): string {
-        return $value === null ? "" : $context->text($value);
+    public function str(#[Param(Special::Mixed)] ?Value $value = null): string {
+        return (string)$value;
     }
 
     #[Method(description: "Whether the text of the value is \"1\", \"true\" or \"yes\", in any case.")]
-    public function bool(#[FromContext] EvaluationContext $context, #[Param(Special::Mixed)] ?Value $value = null): bool {
-        return $value !== null && in_array(strtolower($context->text($value)), ["1", "true", "yes"], true);
+    public function bool(#[Param(Special::Mixed)] ?Value $value = null): bool {
+        return in_array(strtolower((string)$value), ["1", "true", "yes"], true);
     }
 
     #[Method(type: new MapOf(Special::Mixed, StringValue::class), description: "Every global, by name: what is read outside the run.")]

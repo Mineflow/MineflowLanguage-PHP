@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace Mineflow\Language;
 
-use Mineflow\Language\Format\DefaultValueFormatter;
-use Mineflow\Language\Format\ValueFormatter;
 use Mineflow\Language\PhpBinding\AttributeReader;
 use Mineflow\Language\StandardLibrary\BuiltinFunctions;
 use Mineflow\Language\StandardLibrary\StandardTypes;
@@ -16,7 +14,6 @@ final class LanguageBuilder {
     private array $extensions = [];
     /** @var list<object> */
     private array $functions = [];
-    private ?ValueFormatter $formatter = null;
 
     /**
      * Adds the type a Value class or interface declares with #[DeclareType].
@@ -37,14 +34,9 @@ final class LanguageBuilder {
         return $this;
     }
 
-    public function withFormatter(ValueFormatter $formatter): self {
-        $this->formatter = $formatter;
-        return $this;
-    }
-
     public function build(): Language {
         $members = AttributeReader::read([...StandardTypes::CLASSES, ...$this->types], $this->extensions, [new BuiltinFunctions(), ...$this->functions]);
 
-        return new Language($members, $this->formatter ?? new DefaultValueFormatter());
+        return new Language($members);
     }
 }

@@ -4,10 +4,10 @@ declare(strict_types=1);
 namespace Mineflow\Language\Runtime\Engine;
 
 use Closure;
+use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Error\SourceError;
-use Mineflow\Language\Format\DefaultValueFormatter;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Syntax\BinaryOperator;
@@ -31,13 +31,6 @@ use Mineflow\Language\Values\Value;
 use Throwable;
 
 final readonly class Evaluator {
-    /** Computed names (the `b` in `a.{b}`) are always stringified with this format, so they don't depend on the configured format. */
-    private DefaultValueFormatter $defaultFormatter;
-
-    public function __construct() {
-        $this->defaultFormatter = new DefaultValueFormatter();
-    }
-
     /**
      * @throws LanguageException
      */
@@ -49,7 +42,7 @@ final readonly class Evaluator {
      * @throws LanguageException
      */
     public function render(ConcatenationNode $template, EvaluationContext $context): string {
-        return $this->locate($template, fn() => $this->concatenate($template, $context->text(...), $context));
+        return $this->locate($template, fn() => $this->concatenate($template, $context));
     }
 
     /**
@@ -80,7 +73,7 @@ final readonly class Evaluator {
             NumberNode::class => new NumberValue($node->value),
             NameNode::class => new StringValue($node->name),
             ComputedNameNode::class => $this->evaluate($node->name, $context),
-            ConcatenationNode::class => new StringValue($this->concatenate($node, $context->text(...), $context)),
+            ConcatenationNode::class => new StringValue($this->concatenate($node, $context)),
             IdentifierNode::class => $context->scope()->get($node->name),
             ComputedIdentifierNode::class => $this->resolve($this->name($node->name, $context), $context->scope()),
             ParenthesizedNode::class => $this->evaluate($node->expression, $context),
@@ -93,12 +86,11 @@ final readonly class Evaluator {
     }
 
     /**
-     * @param Closure(Value): string $toText
      * @throws LanguageException
      */
-    private function concatenate(ConcatenationNode $node, Closure $toText, EvaluationContext $context): string {
+    private function concatenate(ConcatenationNode $node, EvaluationContext $context): string {
         return implode("", array_map(
-            fn(Node $part) => $part instanceof StringNode ? $part->text : $toText($this->evaluate($part, $context)),
+            fn(Node $part) => $part instanceof StringNode ? $part->text : $this->text($this->evaluate($part, $context)),
             $node->parts,
         ));
     }
@@ -107,15 +99,20 @@ final readonly class Evaluator {
      * @throws LanguageException
      */
     private function name(Node $node, EvaluationContext $context): string {
-        $toText = $this->defaultFormatter->format(...);
-
         return match (true) {
             $node instanceof NameNode => $node->name,
             $node instanceof StringNode => $node->text,
             $node instanceof ComputedNameNode => $this->name($node->name, $context),
-            $node instanceof ConcatenationNode => $this->concatenate($node, $toText, $context),
-            default => $toText($this->evaluate($node, $context)),
+            $node instanceof ConcatenationNode => $this->concatenate($node, $context),
+            default => $this->text($this->evaluate($node, $context)),
         };
+    }
+
+    /**
+     * Writes the value as text; the __toString() of a host's value is host code.
+     */
+    private function text(Value $value): string {
+        return ExternalFailure::guard(static fn() => (string)$value);
     }
 
     private function resolve(string $name, Scope $scope): Value {

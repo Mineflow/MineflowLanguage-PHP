@@ -21,6 +21,10 @@ final readonly class FragileValue extends Value {
     public function broken(): string {
         throw new RuntimeException("broken");
     }
+
+    public function __toString(): string {
+        return "fragile";
+    }
 }
 
 /**
