@@ -400,14 +400,14 @@ final class ObjectTypeDeclarationTest extends TestCase {
 
     public function testAClassCannotBeAddedTwice(): void {
         $this->expectException(DefinitionError::class);
-        $this->expectExceptionMessage(ItemValue::class." is added twice");
+        $this->expectExceptionMessage("Duplicate type: item is already declared for ".ItemValue::class);
 
         (new LanguageBuilder())->addType(ItemValue::class)->addType(ItemValue::class)->build();
     }
 
     public function testAStandardClassCannotBeAddedAgain(): void {
         $this->expectException(DefinitionError::class);
-        $this->expectExceptionMessage(StringValue::class." is added twice");
+        $this->expectExceptionMessage("Duplicate type: string is already declared for ".StringValue::class);
 
         (new LanguageBuilder())->addType(StringValue::class)->build();
     }
