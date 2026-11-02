@@ -8,6 +8,7 @@ use Mineflow\Language\Error\InvalidValue;
 use Mineflow\Language\StandardLibrary\StandardTypes;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Types\TypeRegistry;
+use Mineflow\Language\Values\MapValue;
 use Mineflow\Language\Values\Value;
 use Mineflow\Language\Values\ValueMapper;
 use PHPUnit\Framework\TestCase;
@@ -37,36 +38,39 @@ final class ValueMapperTest extends TestCase {
     }
 
     public function testAPlainArrayIsReadByItsOwnKeys(): void {
-        self::assertSame("list<number>", (string)$this->mapper->wrap([1, 2])->type());
-        self::assertSame("map<string,number>", (string)$this->mapper->wrap(["a" => 1])->type());
+        self::assertSame("list", (string)$this->mapper->wrap([1, 2])->type());
+        self::assertSame("map", (string)$this->mapper->wrap(["a" => 1])->type());
     }
 
     public function testAnEmptyArrayTakesTheShapeTheDeclarationAskedFor(): void {
         $map = StandardTypes::map(StandardTypes::string(), StandardTypes::string());
 
-        self::assertSame("map<never,never>", (string)$this->mapper->wrap([], $map)->type());
-        self::assertSame("list<never>", (string)$this->mapper->wrap([], StandardTypes::list(StandardTypes::string()))->type());
+        self::assertSame("map<number|string,string>", (string)$this->mapper->wrap([], $map)->type());
+        self::assertSame("list<string>", (string)$this->mapper->wrap([], StandardTypes::list(StandardTypes::string()))->type());
         // Without a declaration, an empty array becomes a list, as PHP treats it.
-        self::assertSame("list<never>", (string)$this->mapper->wrap([])->type());
+        self::assertSame("list", (string)$this->mapper->wrap([])->type());
     }
 
     public function testADeclarationOfOneCollectionInsideAUnionStillDecides(): void {
         $expected = Type::union(StandardTypes::list(StandardTypes::number()), StandardTypes::string());
 
+        self::assertSame("map<number|string,number>", (string)$this->mapper->wrap([1], Type::union(StandardTypes::map(StandardTypes::number()), StandardTypes::string()))->type());
         self::assertSame("list<number>", (string)$this->mapper->wrap([1], $expected)->type());
     }
 
     public function testAUnionNamingBothCollectionsLeavesTheArrayToDecide(): void {
         $expected = Type::union(StandardTypes::list(StandardTypes::number()), StandardTypes::map(StandardTypes::number(), StandardTypes::string()));
 
-        self::assertSame("list<number>", (string)$this->mapper->wrap([1], $expected)->type());
-        self::assertSame("map<string,number>", (string)$this->mapper->wrap(["a" => 1], $expected)->type());
+        self::assertSame("list", (string)$this->mapper->wrap([1], $expected)->type());
+        self::assertSame("map", (string)$this->mapper->wrap(["a" => 1], $expected)->type());
     }
 
     public function testTheDeclaredElementTypeReachesEveryItem(): void {
-        $expected = StandardTypes::map(StandardTypes::list(StandardTypes::number()), StandardTypes::string());
+        $expected = StandardTypes::map(StandardTypes::map(StandardTypes::number()), StandardTypes::string());
+        $wrapped = $this->mapper->wrap(["a" => [1, 2]], $expected);
 
-        self::assertSame("map<string,list<number>>", (string)$this->mapper->wrap(["a" => [1, 2]], $expected)->type());
+        self::assertInstanceOf(MapValue::class, $wrapped);
+        self::assertInstanceOf(MapValue::class, $wrapped->item("a"));
     }
 
     public function testAnAssociativeArrayWhereAListWasDeclaredIsRefused(): void {
@@ -80,7 +84,7 @@ final class ValueMapperTest extends TestCase {
         $sword = new SwordValue();
 
         self::assertSame($sword, $this->mapper->wrap($sword));
-        self::assertSame("list<weapon>", (string)$this->mapper->wrap([$sword])->type());
+        self::assertSame([$sword], $this->mapper->wrap([$sword])->native());
     }
 
     public function testAValueOfAnUnregisteredTypeIsRefusedUnlessTheMapperTakesAnyType(): void {

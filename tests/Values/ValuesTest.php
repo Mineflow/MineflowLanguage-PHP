@@ -59,10 +59,26 @@ final class ValuesTest extends TestCase {
         self::assertSame(["empty" => [], "list" => [], "null" => null], $value->native());
     }
 
+    public function testAHintStaysWhileTheItemsPutInFitIt(): void {
+        $numbers = new ListValue([new NumberValue(1), new NumberValue(2)], (new NumberValue(0))->type());
+
+        self::assertSame("list<number>", (string)$numbers->type());
+        self::assertSame("list<number>", (string)$numbers->append(new NumberValue(3))->type());
+        self::assertSame("list<number>", (string)$numbers->with(0, new NumberValue(9))->type());
+        self::assertSame("list<number>", (string)$numbers->reverse()->without(0)->take(1)->type());
+        self::assertSame("list", (string)$numbers->append(new StringValue("a"))->type());
+        self::assertSame("list", (string)$numbers->with(0, new StringValue("a"))->append(new NumberValue(3))->type());
+        self::assertSame("list", (string)(new ListValue([new NumberValue(1)]))->type());
+
+        $scores = new MapValue(["a" => new NumberValue(1)], (new NumberValue(0))->type());
+        self::assertSame("map<number|string,number>", (string)$scores->with("b", new NumberValue(2))->type());
+        self::assertSame("map", (string)$scores->with("b", new NullValue())->type());
+    }
+
     public function testAnItemIsAppendedAtTheEndOfAList(): void {
         $list = new ListValue([new NumberValue(1), new NumberValue(2)]);
         self::assertSame([1, 2, "a"], $list->append(new StringValue("a"))->native());
-        self::assertSame("list<number|string>", (string)$list->append(new StringValue("a"))->type());
+        self::assertSame("list", (string)$list->append(new StringValue("a"))->type());
         self::assertSame([1, 2], $list->native());
     }
 
@@ -95,7 +111,7 @@ final class ValuesTest extends TestCase {
         $list = new ListValue([new StringValue("a"), new StringValue("b"), new StringValue("c")]);
         self::assertSame(["a", "c"], $list->without(1)->native());
         self::assertSame(["a", "b", "c"], $list->without(3)->native());
-        self::assertSame("list<never>", (string)(new ListValue([new StringValue("a")]))->without(0)->type());
+        self::assertSame("list", (string)(new ListValue([new StringValue("a")]))->without(0)->type());
 
         $map = new MapValue(["a" => new NumberValue(1), "b" => new NumberValue(2)]);
         self::assertSame(["b" => 2], $map->without("a")->native());

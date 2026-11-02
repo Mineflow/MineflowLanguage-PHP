@@ -32,12 +32,12 @@ final readonly class OperatorResolution {
      * Computes with an operator declared by either operand's type. Returns null if there is none.
      */
     private function calculate(BinaryOperator $operator, Value $left, Value $right, EvaluationContext $context): ?Value {
-        $reflected = $this->accepting(MemberReference::reflectedOperator($right->type()->name, $operator), $right, $left);
+        $reflected = $this->accepting(MemberReference::reflectedOperator($right->type()->name, $operator), $left);
         if ($reflected !== null && $this->overrides($operator, $left, $right)) {
             return $this->invoker->invoke($reflected, $right, [$left], $context);
         }
 
-        $declared = $this->accepting(MemberReference::operator($left->type()->name, $operator), $left, $right);
+        $declared = $this->accepting(MemberReference::operator($left->type()->name, $operator), $right);
         if ($declared !== null) {
             return $this->invoker->invoke($declared, $left, [$right], $context);
         }
@@ -76,9 +76,9 @@ final readonly class OperatorResolution {
     /**
      * The operator on the target value's type that accepts the other operand, or null.
      */
-    private function accepting(MemberReference $operator, Value $target, Value $operand): ?Member {
+    private function accepting(MemberReference $operator, Value $operand): ?Member {
         $member = $this->members->find($operator);
-        return $member !== null && $member->declaration->definition->parameters[0]->type->resolvePlaceholders($target->type())->accepts($operand->type())
+        return $member !== null && $member->declaration->definition->parameters[0]->type->accepts($operand->type())
             ? $member
             : null;
     }

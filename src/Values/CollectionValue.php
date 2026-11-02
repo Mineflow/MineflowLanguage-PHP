@@ -9,12 +9,13 @@ use Mineflow\Language\Attribute\Index;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Property;
 use Mineflow\Language\Runtime\EvaluationContext;
-use Mineflow\Language\Types\DeclaredType;
+use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\Expression\CollectionOf;
 use Mineflow\Language\Types\Expression\ListOf;
 use Mineflow\Language\Types\Expression\Nullable;
 use Mineflow\Language\Types\Placeholder;
 use Mineflow\Language\Types\Special;
+use Mineflow\Language\Types\Type;
 
 #[DeclareType("collection")]
 abstract readonly class CollectionValue extends Value {
@@ -22,10 +23,6 @@ abstract readonly class CollectionValue extends Value {
      * @return array<string|int, Value>
      */
     abstract public function items(): array;
-
-    public function type(): DeclaredType {
-        return TypeDeclarations::ofCollection($this);
-    }
 
     public function item(string|int $key): ?Value {
         return $this->items()[$key] ?? null;
@@ -111,6 +108,36 @@ abstract readonly class CollectionValue extends Value {
     #[Index(type: Special::Mixed, description: "The item under that key, or else the property of that name read off every item; null when neither is there.")]
     public function entry(string $name, #[FromContext] EvaluationContext $context): ?Value {
         return $this->item($name) ?? $this->pluck($name, $context);
+    }
+
+    /**
+     * The type of value of the class, with the element type hinted when one is given. A hint is not checked
+     * against the items: whoever builds the value vouches for it.
+     * @param class-string $class
+     */
+    protected static function hintedType(string $class, ?Type $element): CollectionType {
+        $type = TypeDeclarations::of($class);
+        assert($type instanceof CollectionType);
+        return $element === null ? $type : $type->withArguments(element: $element);
+    }
+
+    /**
+     * The element hint a collection keeps once the item is put in with the others: this one when it takes the item,
+     * or else none, which leaves a collection of anything.
+     */
+    protected function hintFor(Value $item): ?Type {
+        $type = $this->type();
+        assert($type instanceof CollectionType);
+        return $type->element->accepts($item->type()) ? $type->element : null;
+    }
+
+    /**
+     * The element hint of this collection, for one that holds the same items in another order or fewer of them.
+     */
+    protected function hint(): Type {
+        $type = $this->type();
+        assert($type instanceof CollectionType);
+        return $type->element;
     }
 
     /**

@@ -18,14 +18,12 @@ final readonly class MemberInvoker {
     public function invoke(Member $member, ?Value $target, array $arguments, EvaluationContext $context): Value {
         $reference = $member->declaration->reference;
         $definition = $member->declaration->definition;
-        $targetType = $target?->type();
 
-        $arguments = $this->argumentBinder->bind($reference, $definition, $arguments, $targetType);
+        $arguments = $this->argumentBinder->bind($reference, $definition, $arguments);
         $result = $member->implementation->call($target, $arguments, $context);
 
-        $expected = $definition->resultType($targetType);
-        if (!$expected->accepts($result->type())) {
-            throw new ReturnTypeMismatch($reference, $expected, $result->type());
+        if (!$definition->returns->accepts($result->type())) {
+            throw new ReturnTypeMismatch($reference, $definition->returns, $result->type());
         }
 
         return $result;

@@ -12,6 +12,7 @@ use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Error\InvalidValue;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\StandardLibrary\StandardTypes;
+use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\Expression\CollectionOf;
 use Mineflow\Language\Types\Expression\ListOf;
 use Mineflow\Language\Types\Expression\MapOf;
@@ -363,8 +364,10 @@ final class ObjectTypeDeclarationTest extends TestCase {
         $labels = new LabelsValue([new StringValue("a")]);
         self::assertSame("labels", (string)$labels->type());
         self::assertSame("labels", (string)(new LabelsValue([]))->type());
-        self::assertTrue(StandardTypes::list(StandardTypes::string())->accepts($labels->type()));
-        self::assertFalse(StandardTypes::list(StandardTypes::number())->accepts($labels->type()));
+        $declared = TypeDeclarations::of(LabelsValue::class);
+        self::assertInstanceOf(CollectionType::class, $declared);
+        self::assertSame("string", (string)$declared->element);
+        self::assertTrue(StandardTypes::list(StandardTypes::number())->accepts($labels->type()));
         self::assertSame([], TypeDeclarations::undecided(LabelsValue::class));
         self::assertSame("any_list", (string)(new AnyListValue([new NumberValue(1)]))->type());
         self::assertSame([], TypeDeclarations::undecided(AnyListValue::class));
@@ -388,14 +391,22 @@ final class ObjectTypeDeclarationTest extends TestCase {
         }
     }
 
-    public function testATypeArgumentNoClassDecidesIsWorkedOutFromTheItemsEachTime(): void {
+    public function testATypeHintItsItemsDoNotFitRefusesNothing(): void {
+        $language = (new LanguageBuilder())->addType(LabelsValue::class)->build();
+        $scope = $language->scope(["labels" => new LabelsValue([new NumberValue(1)])]);
+
+        self::assertSame(1, $language->evaluate("labels.first()", $scope)->native());
+        self::assertSame(3.0, $language->evaluate("labels.first() + 2", $scope)->native());
+    }
+
+    public function testTheTypeStaysTheSameWhateverTheItems(): void {
         $shelf = new Shelf();
         $shelf->items = ["a" => new NumberValue(1)];
         $live = new LiveValue($shelf);
-        self::assertSame("live<string,number>", (string)$live->type());
+        self::assertSame("live", (string)$live->type());
 
         $shelf->items["b"] = new StringValue("x");
-        self::assertSame("live<string,number|string>", (string)$live->type());
+        self::assertSame("live", (string)$live->type());
     }
 
     public function testAClassCannotBeAddedTwice(): void {

@@ -11,8 +11,12 @@ final readonly class PlaceholderType extends Type {
         return $other instanceof self && $this->placeholder === $other->placeholder;
     }
 
+    /**
+     * Accepts anything: a placeholder is read from the target for an editor, and is a hint where a source runs, as
+     * the type arguments of a collection are.
+     */
     protected function acceptsSingle(Type $actual): bool {
-        return $this->equals($actual);
+        return true;
     }
 
     /**

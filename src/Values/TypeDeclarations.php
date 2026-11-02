@@ -20,7 +20,8 @@ use ReflectionClass;
  * so a value knows its type without a language.
  *
  * The type of a CollectionValue class has a key type and an element type. Its declaration decides them with typeHint,
- * or leaves them undecided; a value of the class then has the ones its items have.
+ * or leaves them as any. They are hints for an editor, not checks: they are never worked out from the items, and a
+ * list or a map may carry a narrower element hint of its own that nothing checks either.
  */
 final class TypeDeclarations {
     /** @var array<string, array{type: DeclaredType, undecided: list<Placeholder>}|null> */
@@ -30,7 +31,6 @@ final class TypeDeclarations {
 
     /**
      * Returns the type of a value of the class: the one the class declares, or else its nearest parent class.
-     * The key and element types it leaves undecided are the widest ones.
      * @param class-string $class
      */
     public static function of(string $class): DeclaredType {
@@ -52,28 +52,6 @@ final class TypeDeclarations {
      */
     public static function undecided(string $class): array {
         return self::declaration($class)["undecided"];
-    }
-
-    /**
-     * Returns the type of the collection: that of its class, with the type arguments the class leaves undecided
-     * taken from its items. The items are read only when one is undecided.
-     */
-    public static function ofCollection(CollectionValue $collection): CollectionType {
-        ["type" => $type, "undecided" => $undecided] = self::declaration($collection::class);
-        assert($type instanceof CollectionType);
-        if ($undecided === []) {
-            return $type;
-        }
-
-        $items = $collection->items();
-        $key = in_array(Placeholder::Key, $undecided, true)
-            ? Type::union(...array_map(static fn(string|int $key) => self::of(is_int($key) ? NumberValue::class : StringValue::class), array_keys($items)))
-            : $type->key;
-        $element = in_array(Placeholder::Element, $undecided, true)
-            ? Type::union(...array_values(array_map(static fn(Value $item) => $item->type(), $items)))
-            : $type->element;
-
-        return new CollectionType($type->name, $type->class, $key, $element);
     }
 
     /**

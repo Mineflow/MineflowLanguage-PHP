@@ -81,7 +81,7 @@ final class HostCollectionsTest extends TestCase {
         self::assertSame("settings", (string)$type);
         self::assertTrue(TypeDeclarations::of(CollectionValue::class)->accepts($type));
         self::assertTrue(StandardTypes::collection(key: StandardTypes::string())->accepts($type));
-        self::assertFalse(StandardTypes::collection(key: StandardTypes::number())->accepts($type));
+        self::assertTrue(StandardTypes::collection(key: StandardTypes::number())->accepts($type));
         self::assertFalse(StandardTypes::map(Type::mixed())->accepts($type));
         self::assertFalse(StandardTypes::list(Type::mixed())->accepts($type));
         self::assertSame(["settings", "collection"], [
@@ -163,7 +163,7 @@ final class HostCollectionsTest extends TestCase {
         $scope = $this->language->scope(["s" => new SettingsValue($this->settings), "list" => [1, 2], "label" => "total: "]);
         self::assertSame("total: <money:100,user:<name:aieuo>>", $this->language->evaluate("label + s", $scope)->native());
 
-        foreach (["s + 10" => "settings + number", "list + s" => "list<number> + settings", "s + list" => "settings + list<number>", "s + s" => "settings + settings"] as $source => $types) {
+        foreach (["s + 10" => "settings + number", "list + s" => "list + settings", "s + list" => "settings + list", "s + s" => "settings + settings"] as $source => $types) {
             try {
                 $this->language->evaluate($source, $scope);
                 self::fail("Expected $source to be unsupported.");

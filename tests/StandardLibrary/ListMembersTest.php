@@ -6,6 +6,9 @@ namespace Mineflow\Language\Tests\StandardLibrary;
 use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Language;
 use Mineflow\Language\Runtime\Scope;
+use Mineflow\Language\StandardLibrary\StandardTypes;
+use Mineflow\Language\Values\ListValue;
+use Mineflow\Language\Values\StringValue;
 use PHPUnit\Framework\TestCase;
 
 final class ListMembersTest extends TestCase {
@@ -26,6 +29,15 @@ final class ListMembersTest extends TestCase {
         return $this->language->evaluate($source, $this->scope)->native();
     }
 
+    public function testAHintTheItemsDoNotFitRefusesNothing(): void {
+        $scope = $this->language->scope(["xs" => new ListValue([new StringValue("a")], StandardTypes::number()), "suffix" => "!"]);
+
+        self::assertSame("a", $this->language->evaluate("xs.first()", $scope)->native());
+        self::assertSame("a", $this->language->evaluate("xs.last()", $scope)->native());
+        self::assertSame(["a"], $this->language->evaluate("xs.reverse()", $scope)->native());
+        self::assertSame(["a!"], $this->language->evaluate("xs + suffix", $scope)->native());
+    }
+
     public function testOperatorsApplyToEveryItem(): void {
         self::assertSame([5.0, 3.0, 4.0], $this->evaluate("scores + 2"));
         self::assertSame([1.0, -1.0, 0.0], $this->evaluate("scores - 2"));
@@ -42,7 +54,7 @@ final class ListMembersTest extends TestCase {
 
     public function testTwoListsAreNotCalculatedItemByItem(): void {
         $this->expectException(UnsupportedCalculation::class);
-        $this->expectExceptionMessage("Unsupported calculation: list<number> + list<number>");
+        $this->expectExceptionMessage("Unsupported calculation: list + list");
         $this->evaluate("scores + scores");
     }
 
@@ -54,7 +66,7 @@ final class ListMembersTest extends TestCase {
         self::assertSame(0, $this->evaluate("scores.first_key()"));
         self::assertSame(2, $this->evaluate("scores.last_key()"));
         self::assertSame([0, 1, 2], $this->evaluate("scores.keys()"));
-        self::assertSame("list<number>", (string)$this->language->evaluate("scores.keys()", $this->scope)->type());
+        self::assertSame("list", (string)$this->language->evaluate("scores.keys()", $this->scope)->type());
         self::assertSame([3, 1, 2], $this->evaluate("scores.values()"));
         self::assertContains($this->evaluate("scores.random()"), [3, 1, 2]);
     }
@@ -71,7 +83,7 @@ final class ListMembersTest extends TestCase {
         self::assertSame([1, 2], $this->evaluate("scores.take_last(2)"));
         self::assertSame([1, 2], $this->evaluate("scores.takeLast(2)"));
         self::assertSame([], $this->evaluate("scores.take_last(0)"));
-        self::assertSame("list<number>", (string)$this->language->evaluate("scores.take(2)", $this->scope)->type());
+        self::assertSame("list", (string)$this->language->evaluate("scores.take(2)", $this->scope)->type());
 
         $shuffled = $this->evaluate("scores.shuffle()");
         self::assertIsArray($shuffled);

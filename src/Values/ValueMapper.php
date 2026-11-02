@@ -62,7 +62,8 @@ final readonly class ValueMapper {
             throw new InvalidValue("Expected a PHP list, got an associative array.");
         }
 
-        $items = array_map(fn($item) => $this->wrap($item, $collectionType?->element), $value);
-        return $asMap || (!$asList && !array_is_list($items)) ? new MapValue($items) : new ListValue(array_values($items));
+        $element = $collectionType?->element;
+        $items = array_map(fn($item) => $this->wrap($item, $element), $value);
+        return $asMap || (!$asList && !array_is_list($items)) ? new MapValue($items, $element) : new ListValue(array_values($items), $element);
     }
 }

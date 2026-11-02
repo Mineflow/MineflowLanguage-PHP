@@ -12,10 +12,10 @@ use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\CollectionType;
-use Mineflow\Language\Types\DeclaredType;
 use Mineflow\Language\Types\Expression\CollectionOf;
 use Mineflow\Language\Types\Expression\ListOf;
 use Mineflow\Language\Types\Placeholder;
+use Mineflow\Language\Types\Type;
 
 #[DeclareType("list", typeHint: new CollectionOf(key: NumberValue::class))]
 readonly class ListValue extends CollectionValue {
@@ -23,9 +23,10 @@ readonly class ListValue extends CollectionValue {
 
     /**
      * @param list<Value> $items
+     * @param Type|null $element The type every item has, as a hint for an editor; null for items of any type.
      */
-    public function __construct(private array $items = []) {
-        $this->type = TypeDeclarations::ofCollection($this);
+    public function __construct(private array $items = [], ?Type $element = null) {
+        $this->type = self::hintedType(static::class, $element);
     }
 
     /**
@@ -35,12 +36,12 @@ readonly class ListValue extends CollectionValue {
         return $this->items;
     }
 
-    final public function type(): DeclaredType {
+    final public function type(): CollectionType {
         return $this->type;
     }
 
     public function append(Value $item): self {
-        return new self([...$this->items, $item]);
+        return new self([...$this->items, $item], $this->hintFor($item));
     }
 
     public function with(string|int $key, Value $item): self {
@@ -50,13 +51,13 @@ readonly class ListValue extends CollectionValue {
         }
 
         $items[$key] = $item;
-        return new self($items);
+        return new self($items, $this->hintFor($item));
     }
 
     public function without(string|int $key): self {
         $items = $this->items;
         unset($items[$key]);
-        return new self(array_values($items));
+        return new self(array_values($items), $this->hint());
     }
 
     public function __toString(): string {
@@ -65,24 +66,24 @@ readonly class ListValue extends CollectionValue {
 
     #[Method(type: new ListOf(Placeholder::Element), aliases: ["reversed"], description: "The items in reverse order.")]
     public function reverse(): self {
-        return new self(array_reverse($this->items));
+        return new self(array_reverse($this->items), $this->hint());
     }
 
     #[Method(type: new ListOf(Placeholder::Element), description: "The first amount items.")]
     public function take(int $amount): self {
-        return new self(array_slice($this->items, 0, $amount));
+        return new self(array_slice($this->items, 0, $amount), $this->hint());
     }
 
     #[Method(name: "take_last", type: new ListOf(Placeholder::Element), aliases: ["takeLast"], description: "The last amount items.")]
     public function takeLast(int $amount): self {
-        return new self(array_slice($this->items, max(count($this->items) - $amount, 0)));
+        return new self(array_slice($this->items, max(count($this->items) - $amount, 0)), $this->hint());
     }
 
     #[Method(type: new ListOf(Placeholder::Element), aliases: ["shuffled"], description: "The items in random order.")]
     public function shuffle(): self {
         $items = $this->items;
         shuffle($items);
-        return new self($items);
+        return new self($items, $this->hint());
     }
 
     #[Method(description: "Joins the textual form of every item, the form a template would render it in.")]

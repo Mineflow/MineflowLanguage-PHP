@@ -34,7 +34,7 @@ final class MapMembersTest extends TestCase {
         self::assertSame(2, $this->evaluate("user.count()"));
         self::assertSame(["name", "age"], $this->evaluate("user.keys()"));
         self::assertSame(["aieuo", 20], $this->evaluate("user.values()"));
-        self::assertSame("list<number|string>", (string)$this->language->evaluate("user.values()", $this->scope)->type());
+        self::assertSame("list", (string)$this->language->evaluate("user.values()", $this->scope)->type());
         self::assertSame("aieuo", $this->evaluate("user.first()"));
         self::assertSame(20, $this->evaluate("user.last()"));
         self::assertSame("name", $this->evaluate("user.first_key()"));

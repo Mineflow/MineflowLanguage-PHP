@@ -36,8 +36,7 @@ final readonly class CollectionType extends DeclaredType {
     }
 
     protected function acceptsSingle(Type $actual): bool {
-        return parent::acceptsSingle($actual) && $actual instanceof self
-            && $this->key->accepts($actual->key) && $this->element->accepts($actual->element);
+        return parent::acceptsSingle($actual) && $actual instanceof self;
     }
 
     public function resolvePlaceholders(?Type $targetType): Type {

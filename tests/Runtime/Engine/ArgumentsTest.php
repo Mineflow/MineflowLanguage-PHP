@@ -13,6 +13,7 @@ use Mineflow\Language\Error\TooManyArguments;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Types\Expression\ListOf;
+use Mineflow\Language\Values\NumberValue;
 use Mineflow\Language\Values\StringValue;
 use PHPUnit\Framework\TestCase;
 
@@ -34,6 +35,22 @@ final class Padding {
     public function total(#[Param(type: new ListOf(StringValue::class))] array $names): int {
         return count($names);
     }
+
+    /**
+     * @param list<float|int> $numbers
+     */
+    #[Method]
+    public function sum(#[Param(type: new ListOf(NumberValue::class))] array $numbers): float|int {
+        return array_sum($numbers);
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    #[Method(type: new ListOf(StringValue::class))]
+    public function labels(): array {
+        return ["a", 1];
+    }
 }
 
 /**
@@ -46,9 +63,12 @@ final class ArgumentsTest extends TestCase {
         $this->language = (new LanguageBuilder())->addFunctions(new Padding())->build();
     }
 
-    private function refusal(string $source): SourceError {
+    /**
+     * @param array<string, mixed> $variables
+     */
+    private function refusal(string $source, array $variables = []): SourceError {
         try {
-            $this->language->evaluate($source);
+            $this->language->evaluate($source, $this->language->scope($variables));
         } catch (SourceError $error) {
             return $error;
         }
@@ -91,6 +111,21 @@ final class ArgumentsTest extends TestCase {
         $error = $this->refusal("pad(x, {1.5})");
         self::assertInstanceOf(InvalidIntegerConversion::class, $error);
         self::assertSame(1.5, $error->actual);
+    }
+
+    public function testEachItemIsCheckedAsAnArgumentOfItsOwn(): void {
+        $error = $this->refusal("total({names})", ["names" => ["a", 1]]);
+
+        self::assertInstanceOf(ArgumentTypeMismatch::class, $error);
+        self::assertSame("names[1] expects string, got number", $error->getMessage());
+        self::assertSame(3, $this->language->evaluate("sum({numbers})", $this->language->scope(["numbers" => ["1", 2]]))->native());
+    }
+
+    public function testAResultIsNotRefusedForTheItemsItHolds(): void {
+        self::assertSame(["a", 1], $this->language->evaluate("labels()")->native());
+        // The result carries the declared hint, which its last item does not fit.
+        self::assertSame("list<string>", (string)$this->language->evaluate("labels()")->type());
+        self::assertSame(1, $this->language->evaluate("labels().last()")->native());
     }
 
     public function testAListReachesAnArrayParameterAsAPhpList(): void {

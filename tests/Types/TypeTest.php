@@ -51,18 +51,18 @@ final class TypeTest extends TestCase {
         self::assertInstanceOf(PlainType::class, TypeDeclarations::of(StringValue::class));
     }
 
-    public function testACollectionTypeAcceptsOnlyCollectionsWhoseKeysAndItemsItAccepts(): void {
+    public function testACollectionTypeAcceptsACollectionOfItsClassWhateverItHolds(): void {
         $type = StandardTypes::map(StandardTypes::list(Type::union(StandardTypes::number(), StandardTypes::null())));
 
         self::assertSame("map<number|string,list<null|number>>", (string)$type);
+        self::assertSame("map", (string)(new MapValue(["scores" => new ListValue([new NumberValue(2), new StringValue("four")])]))->type());
         self::assertTrue($type->accepts((new MapValue(["scores" => new ListValue([new NumberValue(2), new NullValue(), new NumberValue(4)])]))->type()));
-        self::assertFalse($type->accepts((new MapValue(["scores" => new ListValue([new NumberValue(2), new StringValue("four")])]))->type()));
-        self::assertTrue(StandardTypes::list(StandardTypes::string())->accepts((new ListValue([]))->type()));
-        self::assertTrue(StandardTypes::map(StandardTypes::string())->accepts(StandardTypes::map(StandardTypes::string(), StandardTypes::string())));
-        self::assertFalse(StandardTypes::map(StandardTypes::string(), StandardTypes::string())->accepts(StandardTypes::map(StandardTypes::string())));
-        self::assertFalse(StandardTypes::list(StandardTypes::string())->accepts(StandardTypes::list(Type::mixed())));
+        self::assertTrue($type->accepts((new MapValue(["scores" => new ListValue([new NumberValue(2), new StringValue("four")])]))->type()));
+        self::assertTrue(StandardTypes::list(StandardTypes::string())->accepts((new ListValue([new NumberValue(1)]))->type()));
+        self::assertTrue(StandardTypes::map(StandardTypes::string(), StandardTypes::string())->accepts(StandardTypes::map(StandardTypes::number())));
         self::assertTrue(TypeDeclarations::of(CollectionValue::class)->accepts(StandardTypes::list(StandardTypes::string())));
         self::assertFalse(StandardTypes::list(Type::mixed())->accepts(StandardTypes::map(Type::mixed())));
+        self::assertFalse(StandardTypes::list(StandardTypes::string())->accepts(StandardTypes::string()));
     }
 
     public function testTypesAreComparedByWhatTheyAre(): void {
