@@ -10,7 +10,6 @@ use Mineflow\Language\Attribute\Property;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Runtime\EvaluationContext;
-use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Values\StringValue;
 use PHPUnit\Framework\TestCase;
 
@@ -19,7 +18,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class MemberDeclarationsTest extends TestCase {
     public function testOneMethodCanBeReachedAsBothAPropertyAndAMethod(): void {
-        $extension = new #[ExtendType(Builtin::String)]
+        $extension = new #[ExtendType(StringValue::class)]
         class {
             #[Property(name: "chars", aliases: ["size"])]
             #[Method(name: "chars")]
@@ -40,7 +39,7 @@ final class MemberDeclarationsTest extends TestCase {
         $this->expectException(DefinitionError::class);
         $this->expectExceptionMessage("No language arguments for property.");
 
-        (new LanguageBuilder())->addExtension(new #[ExtendType(Builtin::String)]
+        (new LanguageBuilder())->addExtension(new #[ExtendType(StringValue::class)]
         class {
             #[Property]
             public function repeated(string $value, int $times): string {
@@ -65,7 +64,7 @@ final class MemberDeclarationsTest extends TestCase {
         $this->expectException(DefinitionError::class);
         $this->expectExceptionMessage("An exposed member must be a public instance method");
 
-        (new LanguageBuilder())->addExtension(new #[ExtendType(Builtin::String)]
+        (new LanguageBuilder())->addExtension(new #[ExtendType(StringValue::class)]
         class {
             #[Method]
             public static function shout(string $value): string {
@@ -90,7 +89,7 @@ final class MemberDeclarationsTest extends TestCase {
         $this->expectException(DefinitionError::class);
         $this->expectExceptionMessage("The target value must be the type member's first ordinary parameter.");
 
-        (new LanguageBuilder())->addExtension(new #[ExtendType(Builtin::String)]
+        (new LanguageBuilder())->addExtension(new #[ExtendType(StringValue::class)]
         class {
             #[Method]
             public function first(string ...$values): string {
@@ -103,7 +102,7 @@ final class MemberDeclarationsTest extends TestCase {
         $this->expectException(DefinitionError::class);
         $this->expectExceptionMessage("The target value must be the type member's first ordinary parameter.");
 
-        (new LanguageBuilder())->addExtension(new #[ExtendType(Builtin::String)]
+        (new LanguageBuilder())->addExtension(new #[ExtendType(StringValue::class)]
         class {
             #[Method]
             public function shout(#[FromContext] EvaluationContext $context, string $value): string {

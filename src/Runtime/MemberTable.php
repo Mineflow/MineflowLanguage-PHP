@@ -5,7 +5,7 @@ namespace Mineflow\Language\Runtime;
 
 use Mineflow\Language\Definition\Catalog;
 use Mineflow\Language\Definition\MemberReference;
-use Mineflow\Language\Types\ObjectTypes;
+use Mineflow\Language\Types\TypeRegistry;
 
 final readonly class MemberTable {
     /**
@@ -20,8 +20,8 @@ final readonly class MemberTable {
     /**
      * @param list<Member> $members
      */
-    public static function from(ObjectTypes $objectTypes, array $members): self {
-        $catalog = Catalog::from($objectTypes, array_map(static fn(Member $member) => $member->declaration, $members));
+    public static function from(TypeRegistry $types, array $members): self {
+        $catalog = Catalog::from($types, array_map(static fn(Member $member) => $member->declaration, $members));
         $implementations = [];
         foreach ($members as $member) {
             $reference = $member->declaration->reference;

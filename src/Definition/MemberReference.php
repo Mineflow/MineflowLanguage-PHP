@@ -33,10 +33,6 @@ final readonly class MemberReference implements Stringable {
         return new self($typeName, MemberKind::Index, self::ANY);
     }
 
-    public static function entries(string $typeName): self {
-        return new self($typeName, MemberKind::Entries, self::ANY);
-    }
-
     public static function function (string $name): self {
         return new self(null, MemberKind::Function, $name);
     }

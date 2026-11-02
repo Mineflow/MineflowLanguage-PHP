@@ -3,15 +3,14 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Types\Expression;
 
-use Mineflow\Language\Types\Type;
 use Mineflow\Language\Types\TypeExpression;
-use Mineflow\Language\Types\TypeResolver;
+use Mineflow\Language\Values\ListValue;
 
-final readonly class ListOf implements TypeExpression {
-    public function __construct(public TypeExpression $element) {
-    }
-
-    public function resolve(TypeResolver $resolver): Type {
-        return Type::list($this->element->resolve($resolver));
+final readonly class ListOf extends CollectionExpression {
+    /**
+     * @param TypeExpression|class-string $element
+     */
+    public function __construct(TypeExpression|string $element) {
+        parent::__construct(ListValue::class, $element, null);
     }
 }

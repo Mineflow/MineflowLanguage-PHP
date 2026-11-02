@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Mineflow\Language\Runtime;
 
 use Mineflow\Language\Error\UndefinedVariable;
-use Mineflow\Language\Types\Type;
+use Mineflow\Language\Types\DeclaredType;
 use Mineflow\Language\Values\Value;
 use Mineflow\Language\Values\ValueMapper;
 
@@ -110,10 +110,10 @@ final class Scope {
     }
 
     /**
-     * @return array<string, Type>
+     * @return array<string, DeclaredType>
      */
     public function types(): array {
-        return array_map(static fn(Value $v) => $v->type, $this->all());
+        return array_map(static fn(Value $v) => $v->type(), $this->all());
     }
 
     private function nearestRun(): self {

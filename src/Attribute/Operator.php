@@ -13,11 +13,14 @@ use Mineflow\Language\Types\TypeExpression;
  */
 #[Attribute(Attribute::TARGET_METHOD)]
 final readonly class Operator extends MemberAttribute {
+    /**
+     * @param TypeExpression|class-string|null $type
+     */
     public function __construct(
-        public BinaryOperator $operator,
-        ?TypeExpression $type = null,
-        string          $description = "",
-        public bool     $reflected = false,
+        public BinaryOperator      $operator,
+        TypeExpression|string|null $type = null,
+        string                     $description = "",
+        public bool                $reflected = false,
     ) {
         parent::__construct(type: $type, description: $description);
     }

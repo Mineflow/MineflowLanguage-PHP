@@ -3,50 +3,69 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Tests\Types;
 
-use Mineflow\Language\Types\Builtin;
-use Mineflow\Language\Types\ListType;
-use Mineflow\Language\Types\MapType;
+use Mineflow\Language\Attribute\DeclareType;
+use Mineflow\Language\StandardLibrary\StandardTypes;
+use Mineflow\Language\Types\CollectionType;
+use Mineflow\Language\Types\PlainType;
 use Mineflow\Language\Types\Type;
+use Mineflow\Language\Values\CollectionValue;
 use Mineflow\Language\Values\ListValue;
 use Mineflow\Language\Values\MapValue;
 use Mineflow\Language\Values\NullValue;
 use Mineflow\Language\Values\NumberValue;
 use Mineflow\Language\Values\StringValue;
+use Mineflow\Language\Values\TypeDeclarations;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
-final class TypeTest extends TestCase {
-    public function testACollectionOfMixedIsTheBareCollection(): void {
-        self::assertSame("list", (string)Type::list(Type::mixed()));
-        self::assertSame("map", (string)Type::map(Type::mixed()));
-        self::assertSame("map<string,mixed>", (string)Type::map(Type::mixed(), Type::string()));
+#[DeclareType("thing")]
+readonly class ThingValue extends Value {
+}
 
-        $list = Builtin::List->type();
-        $map = Builtin::Map->type();
-        self::assertInstanceOf(ListType::class, $list);
-        self::assertInstanceOf(MapType::class, $map);
+#[DeclareType("other_thing")]
+final readonly class OtherThingValue extends Value {
+}
+
+final class TypeTest extends TestCase {
+    public function testACollectionWritesTheTypeArgumentsItsDeclarationLeavesUndecided(): void {
+        self::assertSame("list", (string)StandardTypes::list(Type::mixed()));
+        self::assertSame("map", (string)StandardTypes::map(Type::mixed()));
+        self::assertSame("collection", (string)TypeDeclarations::of(CollectionValue::class));
+        self::assertSame("map<string,mixed>", (string)StandardTypes::map(Type::mixed(), StandardTypes::string()));
+        self::assertSame("list<string>", (string)StandardTypes::list(StandardTypes::string()));
+
+        $list = TypeDeclarations::of(ListValue::class);
+        $map = TypeDeclarations::of(MapValue::class);
+        self::assertInstanceOf(CollectionType::class, $list);
+        self::assertInstanceOf(CollectionType::class, $map);
+        self::assertSame("number", (string)$list->key);
         self::assertSame("mixed", (string)$list->element);
         self::assertSame("number|string", (string)$map->key);
+        self::assertSame([], TypeDeclarations::undecided(StringValue::class));
+        self::assertInstanceOf(PlainType::class, TypeDeclarations::of(StringValue::class));
     }
 
     public function testACollectionTypeAcceptsOnlyCollectionsWhoseKeysAndItemsItAccepts(): void {
-        $type = Type::map(Type::list(Type::union(Type::number(), Type::null())));
+        $type = StandardTypes::map(StandardTypes::list(Type::union(StandardTypes::number(), StandardTypes::null())));
 
         self::assertSame("map<number|string,list<null|number>>", (string)$type);
-        self::assertTrue($type->accepts((new MapValue(["scores" => new ListValue([new NumberValue(2), new NullValue(), new NumberValue(4)])]))->type));
-        self::assertFalse($type->accepts((new MapValue(["scores" => new ListValue([new NumberValue(2), new StringValue("four")])]))->type));
-        self::assertTrue(Type::list(Type::string())->accepts((new ListValue([]))->type));
-        self::assertTrue(Type::map(Type::string())->accepts(Type::map(Type::string(), Type::string())));
-        self::assertFalse(Type::map(Type::string(), Type::string())->accepts(Type::map(Type::string())));
-        self::assertFalse(Type::list(Type::string())->accepts(Type::list(Type::mixed())));
+        self::assertTrue($type->accepts((new MapValue(["scores" => new ListValue([new NumberValue(2), new NullValue(), new NumberValue(4)])]))->type()));
+        self::assertFalse($type->accepts((new MapValue(["scores" => new ListValue([new NumberValue(2), new StringValue("four")])]))->type()));
+        self::assertTrue(StandardTypes::list(StandardTypes::string())->accepts((new ListValue([]))->type()));
+        self::assertTrue(StandardTypes::map(StandardTypes::string())->accepts(StandardTypes::map(StandardTypes::string(), StandardTypes::string())));
+        self::assertFalse(StandardTypes::map(StandardTypes::string(), StandardTypes::string())->accepts(StandardTypes::map(StandardTypes::string())));
+        self::assertFalse(StandardTypes::list(StandardTypes::string())->accepts(StandardTypes::list(Type::mixed())));
+        self::assertTrue(TypeDeclarations::of(CollectionValue::class)->accepts(StandardTypes::list(StandardTypes::string())));
+        self::assertFalse(StandardTypes::list(Type::mixed())->accepts(StandardTypes::map(Type::mixed())));
     }
 
     public function testTypesAreComparedByWhatTheyAre(): void {
-        self::assertTrue(Type::union(Type::string(), Type::number())->equals(Type::union(Type::number(), Type::string())));
-        self::assertInstanceOf(ListType::class, Type::union(Type::list(Type::number()), Type::list(Type::number())));
-        self::assertFalse(Type::list(Type::string())->equals(Type::list(Type::number())));
-        self::assertTrue(Type::object("thing", self::class)->equals(Type::object("thing", self::class)));
-        self::assertFalse(Type::object("thing", self::class)->equals(Type::object("thing", TestCase::class)));
-        self::assertTrue(Type::map(Type::mixed())->equals(Type::map(Type::mixed(), Type::union(Type::number(), Type::string()))));
-        self::assertFalse(Type::union(Type::string(), Type::null())->equals(Type::union(Type::string(), Type::number())));
+        self::assertTrue(Type::union(StandardTypes::string(), StandardTypes::number())->equals(Type::union(StandardTypes::number(), StandardTypes::string())));
+        self::assertInstanceOf(CollectionType::class, Type::union(StandardTypes::list(StandardTypes::number()), StandardTypes::list(StandardTypes::number())));
+        self::assertFalse(StandardTypes::list(StandardTypes::string())->equals(StandardTypes::list(StandardTypes::number())));
+        self::assertTrue(TypeDeclarations::of(ThingValue::class)->equals(TypeDeclarations::of(ThingValue::class)));
+        self::assertFalse(TypeDeclarations::of(ThingValue::class)->equals(TypeDeclarations::of(OtherThingValue::class)));
+        self::assertTrue(StandardTypes::map(Type::mixed())->equals(StandardTypes::map(Type::mixed(), Type::union(StandardTypes::number(), StandardTypes::string()))));
+        self::assertFalse(Type::union(StandardTypes::string(), StandardTypes::null())->equals(Type::union(StandardTypes::string(), StandardTypes::number())));
     }
 }

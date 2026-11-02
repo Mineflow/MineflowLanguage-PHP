@@ -9,8 +9,8 @@ use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Tests\Fixtures\Settings;
-use Mineflow\Language\Tests\Fixtures\SettingsType;
-use Mineflow\Language\Types\Builtin;
+use Mineflow\Language\Tests\Fixtures\SettingsValue;
+use Mineflow\Language\Values\ListValue;
 use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class EvaluationContextTest extends TestCase {
     public function testAMemberCallsOtherMembersByTheValueTheyAreCalledOn(): void {
-        $extension = new #[ExtendType(Builtin::List)]
+        $extension = new #[ExtendType(ListValue::class)]
         class {
             #[Method]
             public function sentence(Value $list, #[FromContext] EvaluationContext $context): string {
@@ -42,17 +42,17 @@ final class EvaluationContextTest extends TestCase {
         self::assertSame("A AND B (2)", $language->evaluate("names.sentence()", $scope)->native());
     }
 
-    public function testAMemberIteratesAnObjectTypeThroughItsEntries(): void {
-        $extension = new #[ExtendType(Settings::class)]
+    public function testAMemberCallsTheMembersADeclaredMapInherits(): void {
+        $extension = new #[ExtendType(SettingsValue::class)]
         class {
             #[Method]
-            public function size(Value $settings, #[FromContext] EvaluationContext $context): int {
-                return count($context->asCollection($settings)?->items() ?? []);
+            public function size(SettingsValue $settings, #[FromContext] EvaluationContext $context): int {
+                return count($context->callMethod($settings, "keys")->native());
             }
         };
 
-        $language = (new LanguageBuilder())->addType(new SettingsType())->addExtension($extension)->build();
-        $settings = new Settings("config.yml", ["money" => 100, "user" => ["name" => "aieuo"]]);
+        $language = (new LanguageBuilder())->addType(SettingsValue::class)->addExtension($extension)->build();
+        $settings = new SettingsValue(new Settings("config.yml", ["money" => 100, "user" => ["name" => "aieuo"]]));
 
         self::assertSame(2, $language->evaluate("s.size()", $language->scope(["s" => $settings]))->native());
     }

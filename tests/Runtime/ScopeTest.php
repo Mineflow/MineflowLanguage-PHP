@@ -5,7 +5,6 @@ namespace Mineflow\Language\Tests\Runtime;
 
 use Mineflow\Language\Language;
 use Mineflow\Language\Runtime\Scope;
-use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
@@ -116,7 +115,7 @@ final class ScopeTest extends TestCase {
     public function testTypesAnswerForEveryReadableName(): void {
         $this->local->set("score", 3);
         self::assertSame(
-            ["server" => Builtin::String->value, "name" => Builtin::String->value, "score" => Builtin::Number->value],
+            ["server" => "string", "name" => "string", "score" => "number"],
             array_map(static fn(Type $type) => (string)$type, $this->local->types()),
         );
     }

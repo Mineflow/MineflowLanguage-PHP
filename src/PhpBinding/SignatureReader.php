@@ -8,8 +8,7 @@ use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Definition\Parameter;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Runtime\EvaluationContext;
-use Mineflow\Language\Types\CollectionType;
-use Mineflow\Language\Types\NamedType;
+use Mineflow\Language\Types\DeclaredType;
 use Mineflow\Language\Values\Value;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -27,19 +26,32 @@ final readonly class SignatureReader {
     }
 
     /**
-     * Reads the parameters of a method that implements a member. A type member's first parameter receives the target value;
-     * a null $ownerType means a method added as a function, which has none.
+     * Reads the parameters of a method a Value class declares a member with. It is called on the target value, so
+     * every parameter is a language argument.
      */
-    public function read(ReflectionMethod $method, NamedType|CollectionType|null $ownerType): MethodSignature {
-        $reflected = $method->getParameters();
+    public function readValueMethod(ReflectionMethod $method, DeclaredType $ownerType): MethodSignature {
+        return $this->readArguments($method->getParameters(), [], $ownerType);
+    }
 
-        /** @var list<Extractor> $extractors */
-        $extractors = [];
-        if ($ownerType !== null) {
-            $first = array_shift($reflected) ?? throw new DefinitionError("A type member needs a parameter for the target value.");
-            $extractors[] = $this->extractors->forTarget($this->checkTarget($first, $ownerType));
+    /**
+     * Reads the parameters of a method of an object added to the language. A type member's first parameter receives the
+     * target value; a null $ownerType means a method added as a function, which has none.
+     */
+    public function readObjectMethod(ReflectionMethod $method, ?DeclaredType $ownerType): MethodSignature {
+        $reflected = $method->getParameters();
+        if ($ownerType === null) {
+            return $this->readArguments($reflected, [], null);
         }
 
+        $first = array_shift($reflected) ?? throw new DefinitionError("A type member needs a parameter for the target value.");
+        return $this->readArguments($reflected, [$this->extractors->forTarget($this->checkTarget($first, $ownerType))], $ownerType);
+    }
+
+    /**
+     * @param list<ReflectionParameter> $reflected The parameters that take language arguments or the context.
+     * @param list<Extractor> $extractors Those of the parameters before them.
+     */
+    private function readArguments(array $reflected, array $extractors, ?DeclaredType $ownerType): MethodSignature {
         /** @var list<Parameter> $parameters */
         $parameters = [];
         foreach ($reflected as $parameter) {
@@ -72,7 +84,7 @@ final readonly class SignatureReader {
     /**
      * Checks that the parameter can receive a target value of the owner type, and returns its PHP type.
      */
-    private function checkTarget(ReflectionParameter $parameter, NamedType|CollectionType $ownerType): ReflectionType {
+    private function checkTarget(ReflectionParameter $parameter, DeclaredType $ownerType): ReflectionType {
         if ($parameter->isPassedByReference() || $parameter->isVariadic() || $this->attribute($parameter, FromContext::class) !== null) {
             throw new DefinitionError("The target value must be the type member's first ordinary parameter.");
         }

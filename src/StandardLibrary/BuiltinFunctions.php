@@ -7,10 +7,10 @@ use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Runtime\EvaluationContext;
-use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\Expression\MapOf;
 use Mineflow\Language\Types\Special;
 use Mineflow\Language\Values\MapValue;
+use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\Value;
 
 final class BuiltinFunctions {
@@ -39,7 +39,7 @@ final class BuiltinFunctions {
         return $value !== null && in_array(strtolower($context->text($value)), ["1", "true", "yes"], true);
     }
 
-    #[Method(type: new MapOf(Special::Mixed, Builtin::String), description: "Every global, by name: what is read outside the run.")]
+    #[Method(type: new MapOf(Special::Mixed, StringValue::class), description: "Every global, by name: what is read outside the run.")]
     public function vars(#[FromContext] EvaluationContext $context): MapValue {
         return new MapValue($context->scope()->globals());
     }

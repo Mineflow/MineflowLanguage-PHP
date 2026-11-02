@@ -4,20 +4,19 @@ declare(strict_types=1);
 namespace Mineflow\Language\Definition;
 
 use Mineflow\Language\Error\DefinitionError;
-use Mineflow\Language\Types\Builtin;
-use Mineflow\Language\Types\NamedType;
-use Mineflow\Language\Types\ObjectTypes;
+use Mineflow\Language\Types\DeclaredType;
+use Mineflow\Language\Types\TypeRegistry;
 
 final readonly class Catalog {
     /**
      * @param list<string> $typeNames
-     * @param ObjectTypes $objectTypes
+     * @param TypeRegistry $types
      * @param array<string, array<string, array<string, Declaration>>> $members
      * @param array<string, Declaration> $functions
      */
     private function __construct(
         public array       $typeNames,
-        public ObjectTypes $objectTypes,
+        public TypeRegistry $types,
         private array      $members,
         private array      $functions,
     ) {
@@ -26,8 +25,8 @@ final readonly class Catalog {
     /**
      * @param list<Declaration> $declarations
      */
-    public static function from(ObjectTypes $objectTypes, array $declarations): self {
-        $typeNames = [...array_map(static fn(Builtin $builtin) => $builtin->value, Builtin::cases()), ...$objectTypes->names()];
+    public static function from(TypeRegistry $types, array $declarations): self {
+        $typeNames = $types->names();
         $members = [];
         $functions = [];
 
@@ -49,7 +48,7 @@ final readonly class Catalog {
             }
         }
 
-        return new self($typeNames, $objectTypes, $members, $functions);
+        return new self($typeNames, $types, $members, $functions);
     }
 
     /**
@@ -110,7 +109,7 @@ final readonly class Catalog {
 
     /**
      * Returns the whole catalog as an array. Each member is listed once, under the type that declares it.
-     * ancestors lists, for each object type, its ancestors' type names in inheritance order.
+     * ancestors lists, for each type that has any, its ancestors' type names in member lookup order.
      * @return array{types: array<string, array<string, array<string, MemberDefinition>>>, ancestors: array<string, list<string>>, functions: array<string, MemberDefinition>}
      */
     public function schema(): array {
@@ -120,7 +119,7 @@ final readonly class Catalog {
         }
 
         $ancestors = [];
-        foreach ($this->objectTypes->names() as $typeName) {
+        foreach ($this->types->names() as $typeName) {
             $lineage = array_slice($this->lineage($typeName), 1);
             if ($lineage !== []) {
                 $ancestors[$typeName] = $lineage;
@@ -153,7 +152,7 @@ final readonly class Catalog {
      * @return non-empty-list<string>
      */
     private function lineage(string $typeName): array {
-        return [$typeName, ...array_map(static fn(NamedType $ancestor) => $ancestor->name, $this->objectTypes->ancestors($typeName))];
+        return [$typeName, ...array_map(static fn(DeclaredType $ancestor) => $ancestor->name, $this->types->ancestors($typeName))];
     }
 
     /**

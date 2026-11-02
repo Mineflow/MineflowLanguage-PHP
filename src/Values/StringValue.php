@@ -3,14 +3,77 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Values;
 
-use Mineflow\Language\Types\Type;
+use Mineflow\Language\Attribute\DeclareType;
+use Mineflow\Language\Attribute\FromContext;
+use Mineflow\Language\Attribute\FromNative;
+use Mineflow\Language\Attribute\Method;
+use Mineflow\Language\Attribute\Operator;
+use Mineflow\Language\Attribute\Param;
+use Mineflow\Language\Attribute\Property;
+use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Syntax\BinaryOperator;
+use Mineflow\Language\Types\Special;
+use Stringable;
 
-final readonly class StringValue extends Value {
+#[DeclareType("string")]
+readonly class StringValue extends Value implements Stringable {
     public function __construct(public string $value) {
-        parent::__construct(Type::string());
+    }
+
+    #[FromNative]
+    public static function fromNative(string $value): self {
+        return new self($value);
     }
 
     public function native(): string {
         return $this->value;
+    }
+
+    public function __toString(): string {
+        return $this->value;
+    }
+
+    #[Property(description: "The number of characters")]
+    #[Method(description: "The number of characters")]
+    public function length(): int {
+        return mb_strlen($this->value);
+    }
+
+    #[Property(description: "The string in lower case.")]
+    #[Method(aliases: ["toLowerCase"], description: "The string in lower case.")]
+    public function lowercase(): string {
+        return mb_strtolower($this->value);
+    }
+
+    #[Property(description: "The string in upper case.")]
+    #[Method(aliases: ["toUpperCase"], description: "The string in upper case.")]
+    public function uppercase(): string {
+        return mb_strtoupper($this->value);
+    }
+
+    #[Method(description: "The characters from start, up to length of them or to the end; a negative start counts from the end.")]
+    public function substring(int $start, ?int $length = null): string {
+        return mb_substr($this->value, $start, $length);
+    }
+
+    #[Operator(BinaryOperator::Add, description: "The string followed by the text of the right operand.")]
+    public function concatenate(#[Param(Special::Mixed)] Value $right, #[FromContext] EvaluationContext $context): string {
+        return $this->value.$context->text($right);
+    }
+
+    #[Operator(BinaryOperator::Subtract, description: "The string with every occurrence of the text of the right operand removed.")]
+    public function remove(#[Param(Special::Mixed)] Value $right, #[FromContext] EvaluationContext $context): string {
+        $text = $context->text($right);
+        return $text === "" ? $this->value : str_replace($text, "", $this->value);
+    }
+
+    #[Operator(BinaryOperator::Multiply, description: "The string repeated that many times.")]
+    public function repeat(int $times): string {
+        return str_repeat($this->value, max($times, 0));
+    }
+
+    #[Operator(BinaryOperator::Multiply, reflected: true, description: "The string repeated that many times, with the number on the left.")]
+    public function repeatReflected(int $times): string {
+        return $this->repeat($times);
     }
 }

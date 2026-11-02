@@ -5,7 +5,6 @@ namespace Mineflow\Language\Runtime;
 
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Type;
-use Mineflow\Language\Values\CollectionValue;
 use Mineflow\Language\Values\Value;
 
 /**
@@ -41,20 +40,9 @@ interface EvaluationContext {
     public function property(Value $value, string $name): Value;
 
     /**
-     * Reads `value.name` like property(), or null when no meaning of the name applies.
+     * Reads `value.name` like property(), or null when neither a property nor the index of its type gives the name.
      */
     public function findProperty(Value $value, string $name): ?Value;
-
-    /**
-     * Gets `name` from each element of the collection, even if the collection itself has `name`.
-     * Returns null if any element has no `name`.
-     */
-    public function pluck(CollectionValue $collection, string $name): ?CollectionValue;
-
-    /**
-     * Returns the list or map the value acts as, or null when it acts as neither.
-     */
-    public function asCollection(Value $value): ?CollectionValue;
 
     /**
      * Writes the value as text, the way a template writes it.

@@ -13,8 +13,8 @@ use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\Member;
 use Mineflow\Language\Runtime\MemberImplementation;
 use Mineflow\Language\Runtime\MemberTable;
-use Mineflow\Language\Types\ObjectTypes;
-use Mineflow\Language\Types\Type;
+use Mineflow\Language\StandardLibrary\StandardTypes;
+use Mineflow\Language\Types\TypeRegistry;
 use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
@@ -30,9 +30,9 @@ final class Shout implements MemberImplementation {
 
 final class MemberTableTest extends TestCase {
     public function testAMemberNeedsNoAttributeToBeCalled(): void {
-        $language = new Language(MemberTable::from(new ObjectTypes(), [
+        $language = new Language(MemberTable::from(new TypeRegistry(StandardTypes::CLASSES), [
             $this->shout(MemberReference::method("string", "shout")),
-            $this->shout(MemberReference::function("shout"), [new Parameter("text", Type::string())]),
+            $this->shout(MemberReference::function("shout"), [new Parameter("text", StandardTypes::string())]),
         ]));
         $scope = $language->scope(["word" => "hi"]);
 
@@ -45,7 +45,7 @@ final class MemberTableTest extends TestCase {
         $this->expectException(DefinitionError::class);
         $this->expectExceptionMessage("Duplicate function: shout");
 
-        MemberTable::from(new ObjectTypes(), [
+        MemberTable::from(new TypeRegistry(StandardTypes::CLASSES), [
             $this->shout(MemberReference::function("shout")),
             $this->shout(MemberReference::function("shout")),
         ]);
@@ -55,6 +55,6 @@ final class MemberTableTest extends TestCase {
      * @param list<Parameter> $parameters
      */
     private function shout(MemberReference $reference, array $parameters = []): Member {
-        return new Member(new Declaration($reference, new MemberDefinition(Type::string(), $parameters)), new Shout());
+        return new Member(new Declaration($reference, new MemberDefinition(StandardTypes::string(), $parameters)), new Shout());
     }
 }

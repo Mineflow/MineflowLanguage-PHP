@@ -4,9 +4,8 @@ declare(strict_types=1);
 namespace Mineflow\Language\Definition;
 
 use Mineflow\Language\Error\DefinitionError;
-use Mineflow\Language\Types\Builtin;
-use Mineflow\Language\Types\CollectionType;
-use Mineflow\Language\Types\Type;
+use Mineflow\Language\Values\StringValue;
+use Mineflow\Language\Values\TypeDeclarations;
 
 final readonly class Declaration {
     public function __construct(
@@ -25,10 +24,6 @@ final readonly class Declaration {
      */
     private static function check(MemberReference $reference, MemberDefinition $definition): void {
         $kind = $reference->kind;
-        if (in_array($kind, [MemberKind::Index, MemberKind::Entries], true) && Builtin::tryFrom((string)$reference->typeName) !== null) {
-            throw new DefinitionError("A built-in type cannot declare {$kind->value}: $reference");
-        }
-
         $parameters = $definition->parameters;
         if (!$kind->takesArguments() && $parameters !== []) {
             throw new DefinitionError("No language arguments for {$kind->value}: $reference");
@@ -36,8 +31,7 @@ final readonly class Declaration {
 
         $single = count($parameters) === 1 && !$parameters[0]->optional && !$parameters[0]->variadic;
         $problem = match ($kind) {
-            MemberKind::Index => $single && $parameters[0]->type->accepts(Type::string()) ? null : "An index takes exactly one name, as a string",
-            MemberKind::Entries => $definition->returns instanceof CollectionType ? null : "Entries are either a list or a map",
+            MemberKind::Index => $single && $parameters[0]->type->accepts(TypeDeclarations::of(StringValue::class)) ? null : "An index takes exactly one name, as a string",
             MemberKind::Operator => $single ? null : "A binary operator requires exactly one right operand",
             MemberKind::ReflectedOperator => $single ? null : "A binary operator requires exactly one left operand",
             MemberKind::Property, MemberKind::Method, MemberKind::Function => null,

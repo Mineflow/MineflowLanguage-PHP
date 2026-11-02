@@ -31,8 +31,8 @@ final readonly class Language {
 
     public function __construct(MemberTable $members, private ValueFormatter $formatter = new DefaultValueFormatter()) {
         $this->catalog = $members->catalog;
-        $this->valueMapper = new ValueMapper($members->catalog->objectTypes);
-        $this->invoker = new MemberInvoker($members);
+        $this->valueMapper = new ValueMapper($members->catalog->types);
+        $this->invoker = new MemberInvoker();
         $this->memberAccess = new MemberAccess($members, $this->invoker);
         $this->operatorResolution = new OperatorResolution($members, $this->invoker);
         $this->evaluator = new Evaluator();
@@ -50,7 +50,7 @@ final readonly class Language {
     }
 
     /**
-     * Converts a PHP value to a language value. An object becomes a value of the type declared for its class.
+     * Converts a PHP value to a language value: a Value as it is, an array to a list or a map, and others with #[FromNative].
      */
     public function wrap(mixed $value): Value {
         return $this->valueMapper->wrap($value);
@@ -112,15 +112,14 @@ final readonly class Language {
     }
 
     /**
-     * Writes the value the way a template would. A member that writing it calls, such as a type's #[Entries],
-     * reads the given scope.
+     * Writes the value the way a template would.
      * @throws LanguageException
      */
-    public function text(Value $value, ?Scope $scope = null): string {
-        return $this->context($scope ?? $this->scope())->text($value);
+    public function text(Value $value): string {
+        return $this->context($this->scope())->text($value);
     }
 
     private function context(Scope $scope): EvaluationContext {
-        return new Context($scope, $this->valueMapper, $this->memberAccess, $this->operatorResolution, $this->invoker, $this->formatter);
+        return new Context($scope, $this->valueMapper, $this->memberAccess, $this->operatorResolution, $this->formatter);
     }
 }

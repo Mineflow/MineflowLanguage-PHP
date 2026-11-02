@@ -7,26 +7,16 @@ use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\UndefinedMember;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\MemberTable;
-use Mineflow\Language\Types\CollectionType;
-use Mineflow\Language\Values\CollectionValue;
-use Mineflow\Language\Values\ListValue;
-use Mineflow\Language\Values\MapValue;
-use Mineflow\Language\Values\NullValue;
 use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\Value;
 
 /**
  * Resolves `value.name`, looking in this order:
  *
- * 1. A property declared on the value's type
- * 2. The entry with that name (an element, for collections)
- * 3. The property with the same name on each entry
+ * 1. A property of the value's type, declared on it or inherited
+ * 2. The entry the #[Index] of the value's type gives for that name, declared on it or inherited
  *
- * For object types with #[Entries], collection properties (such as `length`) are looked up after 1.
- * Step 2 calls #[Index]. Without #[Index], it looks for the entry with that name.
- *
- * `value.name(arguments)` calls a method of the value's type. A method that an object type with #[Entries] lacks
- * is called on its collection of entries, if the collection has it.
+ * `value.name(arguments)` calls a method of the value's type, declared on it or inherited.
  */
 final readonly class MemberAccess {
     public function __construct(private MemberTable $members, private MemberInvoker $invoker) {
@@ -36,14 +26,7 @@ final readonly class MemberAccess {
      * @param list<Value> $arguments
      */
     public function callMethod(Value $target, string $name, array $arguments, EvaluationContext $context): Value {
-        $reference = MemberReference::method($target->type->name, $name);
-        $entriesType = $this->entriesType($target->type->name);
-        if ($entriesType !== null && $this->members->catalog->definition($reference) === null
-            && $this->members->catalog->definition(MemberReference::method($entriesType->name, $name)) !== null) {
-            return $this->callMethod($this->invoker->entries($target, $context) ?? $target, $name, $arguments, $context);
-        }
-
-        return $this->invoke($reference, $target, $arguments, $context);
+        return $this->invoke(MemberReference::method($target->type()->name, $name), $target, $arguments, $context);
     }
 
     /**
@@ -54,56 +37,14 @@ final readonly class MemberAccess {
     }
 
     public function find(Value $value, string $name, EvaluationContext $context): ?Value {
-        $typeName = $value->type->name;
+        $typeName = $value->type()->name;
         $declared = $this->members->find(MemberReference::property($typeName, $name));
         if ($declared !== null) {
             return $this->invoker->invoke($declared, $value, [], $context);
         }
 
-        if ($value instanceof CollectionValue) {
-            return $value->item($name) ?? $this->pluck($value, $name, $context);
-        }
-
-        $entriesType = $this->entriesType($typeName);
-        $shared = $entriesType === null ? null : $this->members->find(MemberReference::property($entriesType->name, $name));
-        if ($shared !== null) {
-            return $this->invoker->invoke($shared, $this->invoker->entries($value, $context), [], $context);
-        }
-
         $index = $this->members->find(MemberReference::index($typeName));
-        $entry = $index === null ? null : $this->invoker->invoke($index, $value, [new StringValue($name)], $context);
-        if ($entry !== null && !$entry instanceof NullValue) {
-            return $entry;
-        }
-
-        $entries = $this->invoker->entries($value, $context);
-        if ($entries === null) {
-            return null;
-        }
-
-        return ($index === null ? $entries->item($name) : null) ?? $this->pluck($entries, $name, $context);
-    }
-
-    /**
-     * Gets the same property from each element, keeping keys for a map. Returns null if any element lacks it.
-     */
-    public function pluck(CollectionValue $value, string $name, EvaluationContext $context): ?CollectionValue {
-        $items = [];
-        foreach ($value->items() as $key => $item) {
-            $result = $this->find($item, $name, $context);
-            if ($result === null) {
-                return null;
-            }
-
-            $items[$key] = $result;
-        }
-
-        return $value instanceof ListValue ? new ListValue(array_values($items)) : new MapValue($items);
-    }
-
-    private function entriesType(string $typeName): ?CollectionType {
-        $returns = $this->members->catalog->definition(MemberReference::entries($typeName))?->returns;
-        return $returns instanceof CollectionType ? $returns : null;
+        return $index === null ? null : $this->invoker->invoke($index, $value, [new StringValue($name)], $context);
     }
 
     /**

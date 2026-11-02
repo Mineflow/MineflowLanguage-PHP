@@ -17,42 +17,32 @@ use Mineflow\Language\Values\Value;
  * 1. If the right operand is a subtype of the left operand's type and has its own reflected operator, use it.
  * 2. If the left operand's type has an operator that accepts the right operand, use it.
  * 3. If the types differ and the right operand's type has a reflected operator that accepts the left operand, use it.
- * 4. Otherwise, compute object types as their collections of entries (`config + 1`).
  *
- * If it cannot be computed, the error names the types of both operands as written.
  */
 final readonly class OperatorResolution {
     public function __construct(private MemberTable $members, private MemberInvoker $invoker) {
     }
 
     public function operate(BinaryOperator $operator, Value $left, Value $right, EvaluationContext $context): Value {
-        try {
-            return $this->calculate($operator, $left, $right, $context)
-                ?? $this->calculate($operator, $this->actual($left, $context), $this->actual($right, $context), $context)
-                ?? throw new UnsupportedCalculation($operator, $left->type, $right->type);
-        } catch (UnsupportedCalculation $error) {
-            $refused = $error->operator === $operator
-                && $error->left->equals($this->actual($left, $context)->type)
-                && $error->right->equals($this->actual($right, $context)->type);
-            throw $refused ? new UnsupportedCalculation($operator, $left->type, $right->type) : $error;
-        }
+        return $this->calculate($operator, $left, $right, $context)
+            ?? throw new UnsupportedCalculation($operator, $left->type(), $right->type());
     }
 
     /**
      * Computes with an operator declared by either operand's type. Returns null if there is none.
      */
     private function calculate(BinaryOperator $operator, Value $left, Value $right, EvaluationContext $context): ?Value {
-        $reflected = $this->accepting(MemberReference::reflectedOperator($right->type->name, $operator), $right, $left);
+        $reflected = $this->accepting(MemberReference::reflectedOperator($right->type()->name, $operator), $right, $left);
         if ($reflected !== null && $this->overrides($operator, $left, $right)) {
             return $this->invoker->invoke($reflected, $right, [$left], $context);
         }
 
-        $declared = $this->accepting(MemberReference::operator($left->type->name, $operator), $left, $right);
+        $declared = $this->accepting(MemberReference::operator($left->type()->name, $operator), $left, $right);
         if ($declared !== null) {
             return $this->invoker->invoke($declared, $left, [$right], $context);
         }
 
-        if ($reflected !== null && $left->type->name !== $right->type->name) {
+        if ($reflected !== null && $left->type()->name !== $right->type()->name) {
             return $this->invoker->invoke($reflected, $right, [$left], $context);
         }
 
@@ -65,18 +55,18 @@ final readonly class OperatorResolution {
      * Operators inherited from the left operand's type, or from ancestors that are not its subtypes (such as a base class alongside an interface), do not count.
      */
     private function overrides(BinaryOperator $operator, Value $left, Value $right): bool {
-        if ($left->type->name === $right->type->name || !$left->type->accepts($right->type)) {
+        if ($left->type()->name === $right->type()->name || !$left->type()->accepts($right->type())) {
             return false;
         }
 
-        $origin = $this->members->catalog->origin(MemberReference::reflectedOperator($right->type->name, $operator))?->typeName;
-        if ($origin === $right->type->name) {
+        $origin = $this->members->catalog->origin(MemberReference::reflectedOperator($right->type()->name, $operator))?->typeName;
+        if ($origin === $right->type()->name) {
             return true;
         }
 
-        foreach ($this->members->catalog->objectTypes->ancestors($right->type->name) as $ancestor) {
+        foreach ($this->members->catalog->types->ancestors($right->type()->name) as $ancestor) {
             if ($ancestor->name === $origin) {
-                return $ancestor->name !== $left->type->name && $left->type->accepts($ancestor);
+                return $ancestor->name !== $left->type()->name && $left->type()->accepts($ancestor);
             }
         }
 
@@ -88,12 +78,8 @@ final readonly class OperatorResolution {
      */
     private function accepting(MemberReference $operator, Value $target, Value $operand): ?Member {
         $member = $this->members->find($operator);
-        return $member !== null && $member->declaration->definition->parameters[0]->type->resolvePlaceholders($target->type)->accepts($operand->type)
+        return $member !== null && $member->declaration->definition->parameters[0]->type->resolvePlaceholders($target->type())->accepts($operand->type())
             ? $member
             : null;
-    }
-
-    private function actual(Value $value, EvaluationContext $context): Value {
-        return $this->invoker->entries($value, $context) ?? $value;
     }
 }

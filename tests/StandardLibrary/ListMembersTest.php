@@ -54,7 +54,7 @@ final class ListMembersTest extends TestCase {
         self::assertSame(0, $this->evaluate("scores.first_key()"));
         self::assertSame(2, $this->evaluate("scores.last_key()"));
         self::assertSame([0, 1, 2], $this->evaluate("scores.keys()"));
-        self::assertSame("list<number>", (string)$this->language->evaluate("scores.keys()", $this->scope)->type);
+        self::assertSame("list<number>", (string)$this->language->evaluate("scores.keys()", $this->scope)->type());
         self::assertSame([3, 1, 2], $this->evaluate("scores.values()"));
         self::assertContains($this->evaluate("scores.random()"), [3, 1, 2]);
     }
@@ -71,7 +71,7 @@ final class ListMembersTest extends TestCase {
         self::assertSame([1, 2], $this->evaluate("scores.take_last(2)"));
         self::assertSame([1, 2], $this->evaluate("scores.takeLast(2)"));
         self::assertSame([], $this->evaluate("scores.take_last(0)"));
-        self::assertSame("list<number>", (string)$this->language->evaluate("scores.take(2)", $this->scope)->type);
+        self::assertSame("list<number>", (string)$this->language->evaluate("scores.take(2)", $this->scope)->type());
 
         $shuffled = $this->evaluate("scores.shuffle()");
         self::assertIsArray($shuffled);
@@ -93,6 +93,7 @@ final class ListMembersTest extends TestCase {
         ]);
         self::assertSame(["a", "bb"], $this->language->evaluate("players.pluck({key})", $scope)->native());
         self::assertSame([2, 2], $this->language->evaluate("players.pluck(length)", $scope)->native());
-        self::assertNull($this->language->evaluate("players.pluck(missing)", $scope)->native());
+        self::assertSame([null, null], $this->language->evaluate("players.pluck(missing)", $scope)->native());
+        self::assertNull($this->language->evaluate("names.pluck(missing)", $this->language->scope(["names" => ["a", "b"]]))->native());
     }
 }

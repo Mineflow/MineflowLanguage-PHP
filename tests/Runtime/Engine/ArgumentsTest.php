@@ -12,8 +12,8 @@ use Mineflow\Language\Error\SourceError;
 use Mineflow\Language\Error\TooManyArguments;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
-use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\Expression\ListOf;
+use Mineflow\Language\Values\StringValue;
 use PHPUnit\Framework\TestCase;
 
 final class Padding {
@@ -31,7 +31,7 @@ final class Padding {
      * @param list<string> $names
      */
     #[Method]
-    public function total(#[Param(type: new ListOf(Builtin::String))] array $names): int {
+    public function total(#[Param(type: new ListOf(StringValue::class))] array $names): int {
         return count($names);
     }
 }

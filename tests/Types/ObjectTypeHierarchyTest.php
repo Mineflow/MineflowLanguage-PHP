@@ -13,205 +13,201 @@ use Mineflow\Language\Definition\MemberKind;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\ArgumentTypeMismatch;
 use Mineflow\Language\Error\ExternalFailure;
-use Mineflow\Language\Error\InvalidValue;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Placeholder;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
-class Creature {
-    public function __construct(public string $name, public int $health = 20) {
+#[DeclareType("creature")]
+readonly class CreatureValue extends Value {
+    final public function __construct(public string $name, public int $health = 20) {
+    }
+
+    #[Property]
+    public function name(): string {
+        return $this->name;
+    }
+
+    #[Property]
+    public function kind(): string {
+        return "creature";
+    }
+
+    #[Property]
+    public function sound(): string {
+        return "...";
+    }
+
+    #[Method(type: Placeholder::Target, description: "The same creature.")]
+    public function self(): CreatureValue {
+        return $this;
+    }
+
+    #[Method]
+    public function fail(): string {
+        throw new RuntimeException("failed");
+    }
+
+    #[Operator(BinaryOperator::Add)]
+    public function heal(int $by): CreatureValue {
+        return new static($this->name, $this->health + $by);
+    }
+
+    #[Property]
+    public function health(): int {
+        return $this->health;
+    }
+
+    #[Operator(BinaryOperator::Multiply)]
+    public function times(CreatureValue $other): string {
+        return "creature";
+    }
+
+    #[Operator(BinaryOperator::Multiply, reflected: true)]
+    public function timesFrom(CreatureValue $other): string {
+        return "creature reflected";
     }
 }
 
-class Animal extends Creature {
+#[DeclareType("animal")]
+readonly class AnimalValue extends CreatureValue {
+    #[Property]
+    public function kind(): string {
+        return "animal";
+    }
+
+    #[Property]
+    public function sound(): string {
+        return "growl";
+    }
 }
 
-final class Hero extends Animal {
+#[DeclareType("hero")]
+final readonly class HeroValue extends AnimalValue {
+    #[Property]
+    public function kind(): string {
+        return "hero";
+    }
+
+    #[Operator(BinaryOperator::Multiply, reflected: true)]
+    public function timesFrom(CreatureValue $other): string {
+        return "hero";
+    }
 }
 
-interface Holder {
+/**
+ * Has no #[DeclareType] of its own, so its values are of the type of its parent class.
+ */
+final readonly class SlimeValue extends CreatureValue {
 }
 
-interface Bag extends Holder {
-    /**
-     * @return list<string>
-     */
-    public function contents(): array;
+#[ExtendType(CreatureValue::class)]
+final class CreatureExtras {
+    #[Method]
+    public function shout(CreatureValue $creature): string {
+        return strtoupper($creature->name)."!";
+    }
 }
 
-final class Backpack implements Bag {
+#[DeclareType("holder")]
+interface HolderValue {
+    #[Property]
+    public function kind(): string;
+
+    #[Index]
+    public function slot(string $slot): ?string;
+}
+
+#[DeclareType("bag")]
+interface BagValue extends HolderValue {
+    #[Property]
+    public function size(): int;
+}
+
+#[DeclareType("backpack")]
+final readonly class BackpackValue extends Value implements BagValue {
     /**
      * @param list<string> $items
      */
     public function __construct(private array $items) {
     }
 
-    public function contents(): array {
-        return $this->items;
-    }
-}
-
-interface Labelled {
-}
-
-final class Crate implements Bag, Labelled {
-    public function contents(): array {
-        return [];
-    }
-}
-
-#[DeclareType(Creature::class, name: "creature")]
-final class CreatureType {
-    #[Property]
-    public function name(Creature $creature): string {
-        return $creature->name;
-    }
-
-    #[Property]
-    public function kind(Creature $creature): string {
-        return "creature";
-    }
-
-    #[Property]
-    public function sound(Creature $creature): string {
-        return "...";
-    }
-
-    #[Method(type: Placeholder::Target, description: "The same creature.")]
-    public function self(Creature $creature): Creature {
-        return $creature;
-    }
-
-    #[Method]
-    public function fail(Creature $creature): string {
-        throw new RuntimeException("failed");
-    }
-
-    #[Operator(BinaryOperator::Add)]
-    public function heal(Creature $creature, int $by): Creature {
-        return new $creature($creature->name, $creature->health + $by);
-    }
-
-    #[Property]
-    public function health(Creature $creature): int {
-        return $creature->health;
-    }
-
-    #[Operator(BinaryOperator::Multiply)]
-    public function times(Creature $creature, Creature $other): string {
-        return "creature";
-    }
-
-    #[Operator(BinaryOperator::Multiply, reflected: true)]
-    public function timesFrom(Creature $creature, Creature $other): string {
-        return "creature reflected";
-    }
-}
-
-#[DeclareType(Animal::class, name: "animal")]
-final class AnimalType {
-    #[Property]
-    public function kind(Animal $animal): string {
-        return "animal";
-    }
-
-    #[Property]
-    public function sound(Animal $animal): string {
-        return "growl";
-    }
-}
-
-#[DeclareType(Hero::class, name: "hero")]
-final class HeroType {
-    #[Property]
-    public function kind(Creature $hero): string {
-        return "hero";
-    }
-
-    #[Operator(BinaryOperator::Multiply, reflected: true)]
-    public function timesFrom(Hero $hero, Creature $other): string {
-        return "hero";
-    }
-}
-
-#[ExtendType(Creature::class)]
-final class CreatureExtras {
-    #[Method]
-    public function shout(Creature $creature): string {
-        return strtoupper($creature->name)."!";
-    }
-}
-
-#[DeclareType(Holder::class, name: "holder")]
-final class HolderType {
-    #[Property]
-    public function kind(Holder $holder): string {
+    public function kind(): string {
         return "holder";
     }
 
-    #[Index]
-    public function slot(Holder $holder, string $slot): ?string {
-        return $holder instanceof Bag ? $holder->contents()[(int)$slot] ?? null : null;
+    public function slot(string $slot): ?string {
+        return $this->items[(int)$slot] ?? null;
+    }
+
+    public function size(): int {
+        return count($this->items);
     }
 }
 
-#[DeclareType(Bag::class, name: "bag")]
-final class BagType {
-    #[Property]
-    public function size(Bag $bag): int {
-        return count($bag->contents());
+#[DeclareType("pouch")]
+final readonly class PouchValue extends Value implements BagValue {
+    public function kind(): string {
+        return "pouch";
+    }
+
+    public function slot(string $slot): ?string {
+        return null;
+    }
+
+    public function size(): int {
+        return 1;
     }
 }
 
-#[DeclareType(Labelled::class, name: "labelled")]
-final class LabelledType {
+#[DeclareType("operand")]
+interface OperandValue {
 }
 
-interface Operand {
-}
-
-class OperatorBase {
-}
-
-final class OperatorChild extends OperatorBase implements Operand {
-}
-
-final class LooseOperand implements Operand {
-}
-
-#[DeclareType(Operand::class, name: "operand")]
-final class OperandType {
+#[DeclareType("operator_base")]
+readonly class OperatorBaseValue extends Value {
     #[Operator(BinaryOperator::Multiply)]
-    public function times(Operand $operand, Operand $other): string {
-        return "operand";
+    public function times(OperatorBaseValue $other): string {
+        return "base";
     }
 }
 
-#[DeclareType(OperatorBase::class, name: "operator_base")]
-final class OperatorBaseType {
+#[ExtendType(OperandValue::class)]
+final class OperandExtras {
     #[Operator(BinaryOperator::Multiply, reflected: true)]
-    public function timesFrom(OperatorBase $base, Operand $other): string {
-        return "base reflected";
+    public function timesFrom(OperandValue $operand, OperatorBaseValue $other): string {
+        return "operand reflected";
     }
 }
 
-#[DeclareType(OperatorChild::class, name: "operator_child")]
-final class OperatorChildType {
+#[DeclareType("operator_child")]
+final readonly class OperatorChildValue extends OperatorBaseValue implements OperandValue {
 }
 
-interface Tagged {
+#[DeclareType("tagged")]
+interface TaggedValue {
+    #[Property]
+    public function label(): string;
 }
 
 /**
  * @extends \IteratorAggregate<int, string>
  */
-interface Sealed extends \Countable, \IteratorAggregate, \JsonSerializable {
+#[DeclareType("sealed")]
+interface SealedValue extends \Countable, \IteratorAggregate, \JsonSerializable {
+    #[Property]
+    public function label(): string;
 }
 
-final class Parcel implements Sealed, Tagged {
+#[DeclareType("parcel")]
+final readonly class ParcelValue extends Value implements SealedValue, TaggedValue {
+    public function label(): string {
+        return "parcel";
+    }
+
     public function count(): int {
         return 0;
     }
@@ -228,49 +224,19 @@ final class Parcel implements Sealed, Tagged {
     }
 }
 
-final class Pouch implements Bag {
-    public function contents(): array {
-        return ["coin"];
-    }
-}
-
-#[DeclareType(Tagged::class, name: "tagged")]
-final class TaggedType {
-    #[Property]
-    public function label(Tagged $tagged): string {
-        return "tagged";
-    }
-}
-
-#[DeclareType(Sealed::class, name: "sealed")]
-final class SealedType {
-    #[Property]
-    public function label(Sealed $sealed): string {
-        return "sealed";
-    }
-}
-
-#[DeclareType(Parcel::class, name: "parcel")]
-final class ParcelType {
-}
-
-#[DeclareType(Pouch::class, name: "pouch")]
-final class PouchType {
-}
-
 final class HierarchyFunctions {
     #[Method]
-    public function greet(Creature $creature): string {
+    public function greet(CreatureValue $creature): string {
         return "hi ".$creature->name;
     }
 
     #[Method]
-    public function pet(Animal $animal): string {
+    public function pet(AnimalValue $animal): string {
         return "petted ".$animal->name;
     }
 
     #[Method]
-    public function weigh(Holder $holder): string {
+    public function weigh(HolderValue $holder): string {
         return "weighed";
     }
 }
@@ -280,11 +246,12 @@ final class ObjectTypeHierarchyTest extends TestCase {
 
     protected function setUp(): void {
         $this->language = (new LanguageBuilder())
-            ->addType(new CreatureType())
-            ->addType(new AnimalType())
-            ->addType(new HeroType())
-            ->addType(new HolderType())
-            ->addType(new BagType())
+            ->addType(CreatureValue::class)
+            ->addType(AnimalValue::class)
+            ->addType(HeroValue::class)
+            ->addType(HolderValue::class)
+            ->addType(BagValue::class)
+            ->addType(BackpackValue::class)
             ->addExtension(new CreatureExtras())
             ->addFunctions(new HierarchyFunctions())
             ->build();
@@ -298,31 +265,31 @@ final class ObjectTypeHierarchyTest extends TestCase {
     }
 
     public function testASubtypeHasTheMembersOfItsAncestors(): void {
-        $hero = new Hero("aieuo");
+        $hero = new HeroValue("aieuo");
 
         self::assertSame("aieuo", $this->evaluate("h.name", ["h" => $hero]));
         self::assertSame("AIEUO!", $this->evaluate("h.shout()", ["h" => $hero]));
     }
 
     public function testTheNearestDeclarationWins(): void {
-        $hero = new Hero("aieuo");
+        $hero = new HeroValue("aieuo");
 
         self::assertSame("hero", $this->evaluate("h.kind", ["h" => $hero]));
         self::assertSame("growl", $this->evaluate("h.sound", ["h" => $hero]));
-        self::assertSame("...", $this->evaluate("c.sound", ["c" => new Creature("slime")]));
+        self::assertSame("...", $this->evaluate("c.sound", ["c" => new CreatureValue("slime")]));
     }
 
     public function testAnInheritedMemberIsCalledOnTheSubtype(): void {
-        $scope = $this->language->scope(["h" => new Hero("aieuo")]);
+        $scope = $this->language->scope(["h" => new HeroValue("aieuo")]);
 
-        self::assertSame("hero", (string)$this->language->evaluate("h.self()", $scope)->type);
-        self::assertSame("hero", (string)$this->language->evaluate("h + 5", $scope)->type);
+        self::assertSame("hero", (string)$this->language->evaluate("h.self()", $scope)->type());
+        self::assertSame("hero", (string)$this->language->evaluate("h + 5", $scope)->type());
         self::assertSame(25, $this->language->evaluate("(h + 5).health", $scope)->native());
     }
 
     public function testAFailureOfAnInheritedMemberNamesTheSubtype(): void {
         try {
-            $this->evaluate("h.fail()", ["h" => new Hero("aieuo")]);
+            $this->evaluate("h.fail()", ["h" => new HeroValue("aieuo")]);
 
             self::fail("Expected an ExternalFailure.");
         } catch (ExternalFailure $error) {
@@ -331,35 +298,34 @@ final class ObjectTypeHierarchyTest extends TestCase {
     }
 
     public function testASubtypeIsAcceptedWhereItsAncestorIsExpected(): void {
-        self::assertSame("hi aieuo", $this->evaluate("greet({h})", ["h" => new Hero("aieuo")]));
-        self::assertSame("petted aieuo", $this->evaluate("pet({h})", ["h" => new Hero("aieuo")]));
+        self::assertSame("hi aieuo", $this->evaluate("greet({h})", ["h" => new HeroValue("aieuo")]));
+        self::assertSame("petted aieuo", $this->evaluate("pet({h})", ["h" => new HeroValue("aieuo")]));
     }
 
     public function testAnAncestorIsNotAcceptedWhereItsSubtypeIsExpected(): void {
         $this->expectException(ArgumentTypeMismatch::class);
-        $this->evaluate("pet({c})", ["c" => new Creature("slime")]);
+        $this->evaluate("pet({c})", ["c" => new CreatureValue("slime")]);
     }
 
-    public function testAnObjectOfAnUndeclaredClassIsWrappedAsTheMostSpecificInterface(): void {
-        $scope = $this->language->scope(["b" => new Backpack(["apple", "stone"])]);
+    public function testAClassWithoutADeclarationOfItsOwnIsOfItsParentsType(): void {
+        $scope = $this->language->scope(["s" => new SlimeValue("slime")]);
 
-        self::assertSame("bag", (string)$this->language->evaluate("b", $scope)->type);
+        self::assertSame("creature", (string)$this->language->evaluate("s", $scope)->type());
+        self::assertSame("slime", $this->language->evaluate("s.name", $scope)->native());
+    }
+
+    public function testAClassHasTheMembersOfTheInterfacesItImplements(): void {
+        $scope = $this->language->scope(["b" => new BackpackValue(["apple", "stone"])]);
+
+        self::assertSame("backpack", (string)$this->language->evaluate("b", $scope)->type());
         self::assertSame(2, $this->language->evaluate("b.size", $scope)->native());
         self::assertSame("holder", $this->language->evaluate("b.kind", $scope)->native());
         self::assertSame("stone", $this->language->evaluate("b.1", $scope)->native());
         self::assertSame("weighed", $this->language->evaluate("weigh({b})", $scope)->native());
     }
 
-    public function testAnObjectMatchingTwoUnrelatedInterfacesHasNoType(): void {
-        $language = (new LanguageBuilder())->addType(new BagType())->addType(new LabelledType())->build();
-
-        $this->expectException(InvalidValue::class);
-        $this->expectExceptionMessage(Crate::class." implements the interfaces of the types bag, labelled alike; declare a type for its class.");
-        $language->scope(["c" => new Crate()]);
-    }
-
     public function testASubtypeOnTheRightWithItsOwnReflectedOperatorIsAskedFirst(): void {
-        $operands = ["c" => new Creature("slime"), "a" => new Animal("wolf"), "h" => new Hero("aieuo")];
+        $operands = ["c" => new CreatureValue("slime"), "a" => new AnimalValue("wolf"), "h" => new HeroValue("aieuo")];
 
         self::assertSame("hero", $this->evaluate("c * h", $operands));
         self::assertSame("hero", $this->evaluate("a * h", $operands));
@@ -370,14 +336,15 @@ final class ObjectTypeHierarchyTest extends TestCase {
 
     public function testAReflectedOperatorFromAnAncestorThatIsNotASubtypeOfTheLeftTypeIsNotAskedFirst(): void {
         $language = (new LanguageBuilder())
-            ->addType(new OperandType())
-            ->addType(new OperatorBaseType())
-            ->addType(new OperatorChildType())
+            ->addType(OperandValue::class)
+            ->addType(OperatorBaseValue::class)
+            ->addType(OperatorChildValue::class)
+            ->addExtension(new OperandExtras())
             ->build();
 
-        $scope = $language->scope(["o" => new LooseOperand(), "c" => new OperatorChild()]);
-        self::assertSame("operand", (string)$language->evaluate("o", $scope)->type);
-        self::assertSame("operand", $language->evaluate("o * c", $scope)->native());
+        $scope = $language->scope(["b" => new OperatorBaseValue(), "c" => new OperatorChildValue()]);
+        self::assertSame("operand.*", (string)$language->catalog->origin(MemberReference::reflectedOperator("operator_child", BinaryOperator::Multiply)));
+        self::assertSame("base", $language->evaluate("b * c", $scope)->native());
     }
 
     public function testTheCatalogListsWhatATypeHasAndWhatItDeclaresApart(): void {
@@ -397,6 +364,7 @@ final class ObjectTypeHierarchyTest extends TestCase {
         self::assertSame("animal.sound", (string)$catalog->origin(MemberReference::property("hero", "sound")));
         self::assertSame("hero.kind", (string)$catalog->origin(MemberReference::property("hero", "kind")));
         self::assertSame("holder.*", (string)$catalog->origin(MemberReference::index("bag")));
+        self::assertSame("holder.kind", (string)$catalog->origin(MemberReference::property("backpack", "kind")));
         self::assertNull($catalog->origin(MemberReference::property("hero", "level")));
         self::assertSame("hero.name", (string)$catalog->declaration(MemberReference::property("hero", "name"))?->reference);
     }
@@ -404,32 +372,43 @@ final class ObjectTypeHierarchyTest extends TestCase {
     public function testTheSchemaHoldsEveryMemberOnceAndTheAncestorsOfEveryType(): void {
         $schema = $this->language->catalog->schema();
         self::assertSame(["kind"], array_keys($schema["types"]["hero"][MemberKind::Property->value]));
-        self::assertSame(["animal" => ["creature"], "hero" => ["animal", "creature"], "bag" => ["holder"]], $schema["ancestors"]);
+        self::assertArrayNotHasKey("backpack", $schema["types"]);
+        self::assertSame([
+            "list" => ["collection"],
+            "map" => ["collection"],
+            "animal" => ["creature"],
+            "hero" => ["animal", "creature"],
+            "bag" => ["holder"],
+            "backpack" => ["bag", "holder"],
+        ], $schema["ancestors"]);
     }
 
     public function testUnrelatedInterfacesAreInheritedInTheOrderTheyWereDeclared(): void {
-        $language = (new LanguageBuilder())->addType(new TaggedType())->addType(new SealedType())->addType(new ParcelType())->build();
-        self::assertSame(["tagged", "sealed"], array_map(strval(...), $language->catalog->objectTypes->ancestors("parcel")));
-        self::assertSame("tagged", $language->evaluate("p.label", $language->scope(["p" => new Parcel()]))->native());
+        $label = MemberReference::property("parcel", "label");
 
-        $language = (new LanguageBuilder())->addType(new SealedType())->addType(new TaggedType())->addType(new ParcelType())->build();
-        self::assertSame(["sealed", "tagged"], array_map(strval(...), $language->catalog->objectTypes->ancestors("parcel")));
-        self::assertSame("sealed", $language->evaluate("p.label", $language->scope(["p" => new Parcel()]))->native());
+        $language = (new LanguageBuilder())->addType(TaggedValue::class)->addType(SealedValue::class)->addType(ParcelValue::class)->build();
+        self::assertSame(["tagged", "sealed"], array_map(strval(...), $language->catalog->types->ancestors("parcel")));
+        self::assertSame("tagged.label", (string)$language->catalog->origin($label));
+        self::assertSame("parcel", $language->evaluate("p.label", $language->scope(["p" => new ParcelValue()]))->native());
+
+        $language = (new LanguageBuilder())->addType(SealedValue::class)->addType(TaggedValue::class)->addType(ParcelValue::class)->build();
+        self::assertSame(["sealed", "tagged"], array_map(strval(...), $language->catalog->types->ancestors("parcel")));
+        self::assertSame("sealed.label", (string)$language->catalog->origin($label));
     }
 
     public function testAnInterfaceComesBeforeOneItExtendsWhicheverWasDeclaredFirst(): void {
-        foreach ([[new HolderType(), new BagType()], [new BagType(), new HolderType()]] as $interfaces) {
+        foreach ([[HolderValue::class, BagValue::class], [BagValue::class, HolderValue::class]] as $interfaces) {
             $builder = new LanguageBuilder();
 
-            foreach ([...$interfaces, new PouchType()] as $type) {
+            foreach ([...$interfaces, PouchValue::class] as $type) {
                 $builder->addType($type);
             }
-            self::assertSame(["bag", "holder"], array_map(strval(...), $builder->build()->catalog->objectTypes->ancestors("pouch")));
+            self::assertSame(["bag", "holder"], array_map(strval(...), $builder->build()->catalog->types->ancestors("pouch")));
         }
     }
 
     public function testAncestorsAreTheParentClassesThenTheInterfaces(): void {
-        $objectTypes = $this->language->catalog->objectTypes;
+        $objectTypes = $this->language->catalog->types;
         self::assertSame(["animal", "creature"], array_map(strval(...), $objectTypes->ancestors("hero")));
         self::assertSame(["holder"], array_map(strval(...), $objectTypes->ancestors("bag")));
         self::assertSame([], $objectTypes->ancestors("creature"));

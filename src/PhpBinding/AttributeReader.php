@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\PhpBinding;
 
-use Mineflow\Language\Attribute\Entries;
+use Closure;
 use Mineflow\Language\Attribute\ExtendType;
 use Mineflow\Language\Attribute\Index;
 use Mineflow\Language\Attribute\MemberAttribute;
@@ -15,10 +15,10 @@ use Mineflow\Language\Definition\MemberDefinition;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Runtime\Member;
+use Mineflow\Language\Runtime\MemberImplementation;
 use Mineflow\Language\Runtime\MemberTable;
-use Mineflow\Language\Types\Builtin;
-use Mineflow\Language\Types\CollectionType;
-use Mineflow\Language\Types\NamedType;
+use Mineflow\Language\Types\DeclaredType;
+use Mineflow\Language\Types\TypeRegistry;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
@@ -27,58 +27,94 @@ final readonly class AttributeReader {
     private PhpTypes $phpTypes;
     private SignatureReader $signatures;
 
-    private function __construct(private DeclaredTypes $declared) {
-        $this->phpTypes = new PhpTypes($declared->objectTypes);
+    private function __construct(private TypeRegistry $types) {
+        $this->phpTypes = new PhpTypes($types);
         $this->signatures = new SignatureReader($this->phpTypes);
     }
 
     /**
-     * Reads the members that attributes declare: on the classes of #[DeclareType] declarers, on the types
-     * #[ExtendType] extensions name, and as functions.
-     * @param list<object> $declarers
+     * Reads the members that attributes declare: on the Value classes and interfaces of declared types, on the
+     * types #[ExtendType] extensions name, and as functions.
+     * @param list<class-string> $types Classes and interfaces with #[DeclareType].
      * @param list<object> $extensions
      * @param list<object> $functions
      */
-    public static function read(array $declarers, array $extensions, array $functions): MemberTable {
-        $declared = DeclaredTypes::read($declarers);
-        return MemberTable::from($declared->objectTypes, (new self($declared))->members($extensions, $functions));
+    public static function read(array $types, array $extensions, array $functions): MemberTable {
+        $registered = new TypeRegistry($types);
+        return MemberTable::from($registered, (new self($registered))->members($types, $extensions, $functions));
     }
 
     /**
+     * @param list<class-string> $types
      * @param list<object> $extensions
      * @param list<object> $functions
      * @return list<Member>
      */
-    private function members(array $extensions, array $functions): array {
+    private function members(array $types, array $extensions, array $functions): array {
         $members = [];
-        foreach ($this->declared->declarers as [$type, $declarer]) {
-            $members[] = $this->membersOf($type, $declarer);
+        foreach ($types as $class) {
+            $members[] = $this->valueClassMembers($this->types->of($class), new ReflectionClass($class));
         }
 
         foreach ($extensions as $extension) {
             $extended = (((new ReflectionClass($extension))->getAttributes(ExtendType::class)[0] ?? null)?->newInstance()
                 ?? throw new DefinitionError("Missing #[ExtendType] on ".$extension::class))->type;
-            $ownerType = $extended instanceof Builtin
-                ? $extended->type()
-                : $this->declared->objectTypes->find($extended) ?? throw new DefinitionError("Unregistered extension target: $extended");
+            $ownerType = $this->types->find($extended) ?? throw new DefinitionError("Unregistered extension target: $extended");
 
-            $members[] = $this->membersOf($ownerType, $extension);
+            $members[] = $this->objectMembers($ownerType, $extension);
         }
 
         foreach ($functions as $functionProvider) {
-            $members[] = $this->membersOf(null, $functionProvider);
+            $members[] = $this->objectMembers(null, $functionProvider);
         }
 
         return array_merge(...$members);
     }
 
     /**
+     * Reads the members the class of a declared type declares, called on the value itself: its own, and those of
+     * parent classes that declare no type themselves.
+     * @param ReflectionClass<object> $class
      * @return list<Member>
      */
-    private function membersOf(NamedType|CollectionType|null $ownerType, object $instance): array {
-        $class = new ReflectionClass($instance);
-
+    private function valueClassMembers(DeclaredType $type, ReflectionClass $class): array {
         $members = [];
+        foreach ($this->exposedMethods($class) as [$method, $attributes]) {
+            $declaringClass = $method->getDeclaringClass()->getName();
+            if ($declaringClass !== $class->getName() && $this->types->find($declaringClass) !== null) {
+                continue;
+            }
+
+            $signature = $this->signatures->readValueMethod($method, $type);
+            $members[] = $this->declare($method, $attributes, $type, $signature,
+                static fn(MemberDefinition $definition) => new ValueMethodCall($definition, $method->getName(), $signature->extractors));
+        }
+
+        return array_merge(...$members);
+    }
+
+    /**
+     * Reads the members of an object added to the language: an extension of $ownerType, or functions when it is null.
+     * @return list<Member>
+     */
+    private function objectMembers(?DeclaredType $ownerType, object $object): array {
+        $members = [];
+        foreach ($this->exposedMethods(new ReflectionClass($object)) as [$method, $attributes]) {
+            $signature = $this->signatures->readObjectMethod($method, $ownerType);
+            $members[] = $this->declare($method, $attributes, $ownerType, $signature,
+                static fn(MemberDefinition $definition) => new ObjectMethodCall($definition, $object, $method->getName(), $signature->extractors));
+        }
+
+        return array_merge(...$members);
+    }
+
+    /**
+     * The public instance methods of the class that declare members, with their member attributes.
+     * @param ReflectionClass<object> $class
+     * @return list<array{ReflectionMethod, non-empty-list<MemberAttribute>}>
+     */
+    private function exposedMethods(ReflectionClass $class): array {
+        $exposed = [];
         foreach ($class->getMethods() as $method) {
             $attributes = $this->memberAttributes($method);
             if ($attributes === []) {
@@ -89,20 +125,32 @@ final readonly class AttributeReader {
                     .$class->getName()."::".$method->getName());
             }
 
-            $signature = $this->signatures->read($method, $ownerType);
-            foreach ($attributes as $attribute) {
-                $references = $this->references($attribute, $ownerType?->name, $method->getName());
+            $exposed[] = [$method, $attributes];
+        }
 
-                $declaringClass = $method->getDeclaringClass()->getName();
-                $phpType = $method->getReturnType() ?? throw new DefinitionError("Missing PHP return type in $declaringClass");
-                $returns = $this->phpTypes->infer($phpType, $attribute->type, $declaringClass, $ownerType);
+        return $exposed;
+    }
 
-                $definition = new MemberDefinition($returns, $signature->parametersFor($references[0]->kind), $attribute->description);
-                $call = new PhpMethodCall($definition, $instance, $method->getName(), $signature->extractors);
+    /**
+     * Declares the members the attributes of a method name, each implemented by the call $implement makes.
+     * @param non-empty-list<MemberAttribute> $attributes
+     * @param Closure(MemberDefinition): MemberImplementation $implement
+     * @return list<Member>
+     */
+    private function declare(ReflectionMethod $method, array $attributes, ?DeclaredType $ownerType, MethodSignature $signature, Closure $implement): array {
+        $declaringClass = $method->getDeclaringClass()->getName();
+        $members = [];
+        foreach ($attributes as $attribute) {
+            $references = $this->references($attribute, $ownerType?->name, $method->getName());
 
-                foreach ($references as $reference) {
-                    $members[] = new Member(new Declaration($reference, $definition), $call);
-                }
+            $phpType = $method->getReturnType() ?? throw new DefinitionError("Missing PHP return type in $declaringClass");
+            $returns = $this->phpTypes->infer($phpType, $attribute->type, $declaringClass, $ownerType);
+
+            $definition = new MemberDefinition($returns, $signature->parametersFor($references[0]->kind), $attribute->description);
+            $call = $implement($definition);
+
+            foreach ($references as $reference) {
+                $members[] = new Member(new Declaration($reference, $definition), $call);
             }
         }
 
@@ -139,7 +187,6 @@ final readonly class AttributeReader {
                 ? MemberReference::reflectedOperator($typeName, $attribute->operator)
                 : MemberReference::operator($typeName, $attribute->operator)],
             $attribute instanceof Index => [MemberReference::index($typeName)],
-            $attribute instanceof Entries => [MemberReference::entries($typeName)],
         };
     }
 }

@@ -34,7 +34,7 @@ final class OutOfStock extends EvaluationError {
 }
 
 /**
- * A host member that returns an object whose type is not declared.
+ * A host member that returns a PHP object rather than a Value of a declared type.
  */
 final class Leaky {
     #[Method]
@@ -83,7 +83,7 @@ final class ErrorsTest extends TestCase {
         $language = (new LanguageBuilder())->addFunctions(new Leaky())->build();
 
         $this->expectException(InvalidValue::class);
-        $this->expectExceptionMessage("Unregistered object: ".Shop::class);
+        $this->expectExceptionMessage("No language value for a PHP object of ".Shop::class."; pass a Value of its type");
         $language->evaluate("1 + leak()");
     }
 
@@ -109,13 +109,14 @@ final class ErrorsTest extends TestCase {
         self::assertSame(["string", "missing"], [$error->reference->typeName, $error->reference->name]);
     }
 
-    public function testAPropertyNoItemOfACollectionHasNamesTheCollectionType(): void {
+    public function testAPropertyOfATypeWithoutAnIndexNamesTheType(): void {
         $language = Language::create();
         $scope = $language->scope(["scores" => [3, 1]]);
-        $error = $this->errorFrom($language, "scores.missing", $scope);
+        $error = $this->errorFrom($language, "scores.first().missing", $scope);
 
         self::assertInstanceOf(UndefinedMember::class, $error);
-        self::assertSame("Undefined property: list<number>.missing", $error->getMessage());
+        self::assertSame("Undefined property: number.missing", $error->getMessage());
+        self::assertNull($language->evaluate("scores.missing", $scope)->native());
     }
 
     private function errorFrom(Language $language, string $source, ?Scope $scope = null): SourceError {

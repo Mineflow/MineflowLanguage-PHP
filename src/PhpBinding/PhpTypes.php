@@ -4,26 +4,25 @@ declare(strict_types=1);
 namespace Mineflow\Language\PhpBinding;
 
 use Mineflow\Language\Error\DefinitionError;
-use Mineflow\Language\Types\ObjectTypes;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Types\TypeExpression;
-use Mineflow\Language\Values\BooleanValue;
+use Mineflow\Language\Types\TypeExpressions;
+use Mineflow\Language\Types\TypeRegistry;
 use Mineflow\Language\Values\CollectionValue;
-use Mineflow\Language\Values\ListValue;
-use Mineflow\Language\Values\MapValue;
 use Mineflow\Language\Values\NullValue;
-use Mineflow\Language\Values\NumberValue;
-use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\Value;
 use ReflectionNamedType;
 use ReflectionType;
 use ReflectionUnionType;
 
 final readonly class PhpTypes {
-    public function __construct(private ObjectTypes $objectTypes) {
+    public function __construct(private TypeRegistry $types) {
     }
 
-    public function infer(ReflectionType $phpType, ?TypeExpression $declaredType, string $declaringClass, ?Type $targetType = null): Type {
+    /**
+     * @param TypeExpression|class-string|null $declaredType
+     */
+    public function infer(ReflectionType $phpType, TypeExpression|string|null $declaredType, string $declaringClass, ?Type $targetType = null): Type {
         $isValueObject = $phpType instanceof ReflectionNamedType && $phpType->getName() === Value::class;
         $isArray = false;
 
@@ -33,7 +32,7 @@ final readonly class PhpTypes {
         }
 
         if ($declaredType !== null) {
-            $type = $declaredType->resolve(new MemberTypeResolver($this->objectTypes, $targetType));
+            $type = TypeExpressions::resolve($declaredType, new MemberTypeResolver($this->types, $targetType));
 
             if (!$isValueObject) {
                 $phpEquivalent = $this->fromPhpType($phpType, $declaringClass);
@@ -68,21 +67,22 @@ final readonly class PhpTypes {
             throw new DefinitionError("Unsupported PHP type $phpType in $declaringClass");
         }
 
-        $name = $phpType->getName();
-        $type = match ($name) {
-            "int", "float", NumberValue::class => Type::number(),
-            "bool", "true", "false", BooleanValue::class => Type::boolean(),
-            "string", StringValue::class => Type::string(),
-            "null", NullValue::class => Type::null(),
-            "mixed" => Type::mixed(),
-            "never" => Type::never(),
-            "array", CollectionValue::class => Type::anyCollection(),
-            ListValue::class => Type::list(Type::mixed()),
-            MapValue::class => Type::map(Type::mixed()),
-            "self", "static" => $this->objectTypes->of($declaringClass),
-            default => $this->objectTypes->of($name),
+        $name = match ($phpType->getName()) {
+            "self", "static" => $declaringClass,
+            "true", "false" => "bool",
+            "array" => CollectionValue::class,
+            default => $phpType->getName(),
+        };
+        $type = match (true) {
+            $name === "mixed" => Type::mixed(),
+            $name === "never" => Type::never(),
+            is_a($name, Value::class, true) => $this->types->of($name),
+            default => $this->types->find($name) ?? $this->types->typeForPhpType($name)
+                ?? throw new DefinitionError("No language type for the PHP type $name in $declaringClass; declare #[FromNative] on the Value class of its type"),
         };
 
-        return $phpType->allowsNull() ? Type::union($type, Type::null()) : $type;
+        return $phpType->allowsNull() && $name !== "null" && $name !== "mixed"
+            ? Type::union($type, $this->types->of(NullValue::class))
+            : $type;
     }
 }

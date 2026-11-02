@@ -7,6 +7,7 @@ use Closure;
 use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\InvalidIntegerConversion;
 use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Values\CollectionValue;
 use Mineflow\Language\Values\Value;
 use ReflectionNamedType;
 use ReflectionParameter;
@@ -79,8 +80,13 @@ final readonly class ArgumentExtractors {
         }
 
         $integerOnly = in_array("int", $names, true) && !in_array("float", $names, true) && !in_array("mixed", $names, true);
+        $takesArray = in_array("array", $names, true);
 
-        return static function (Value $value) use ($integerOnly): mixed {
+        return static function (Value $value) use ($integerOnly, $takesArray): mixed {
+            if ($takesArray && $value instanceof CollectionValue) {
+                return $value->toArray();
+            }
+
             $native = $value->native();
 
             if ($integerOnly && is_float($native)) {

@@ -15,11 +15,10 @@ enum MemberKind: string {
     /** left symbol right */
     case ReflectedOperator = "reflected operator";
     case Index = "index";
-    case Entries = "entries";
 
     public function takesArguments(): bool {
         return match ($this) {
-            self::Property, self::Entries => false,
+            self::Property => false,
             self::Method, self::Function, self::Operator, self::ReflectedOperator, self::Index => true,
         };
     }

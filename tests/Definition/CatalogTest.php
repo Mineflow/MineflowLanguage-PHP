@@ -15,27 +15,26 @@ use Mineflow\Language\Definition\Parameter;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
+use Mineflow\Language\StandardLibrary\StandardTypes;
 use Mineflow\Language\Syntax\BinaryOperator;
-use Mineflow\Language\Tests\Fixtures\Settings;
-use Mineflow\Language\Tests\Fixtures\SettingsType;
-use Mineflow\Language\Types\Builtin;
-use Mineflow\Language\Types\ObjectTypes;
-use Mineflow\Language\Types\Type;
+use Mineflow\Language\Tests\Fixtures\SettingsValue;
+use Mineflow\Language\Types\TypeRegistry;
+use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
 
-#[DeclareType(Badge::class, name: "badge")]
-final class Badge {
+#[DeclareType("badge")]
+final readonly class Badge extends Value {
     public function __construct(public string $label = "gold") {
     }
 
     #[Property(description: "The label shown on the badge.")]
-    public function label(self $badge): string {
-        return $badge->label;
+    public function label(): string {
+        return $this->label;
     }
 
     #[Method(aliases: ["repeated"], description: "The label, repeated.")]
-    public function repeat(self $badge, int $times = 2): string {
-        return str_repeat($badge->label, $times);
+    public function repeat(int $times = 2): string {
+        return str_repeat($this->label, $times);
     }
 }
 
@@ -48,22 +47,20 @@ final class Greetings {
 
 final class CatalogTest extends TestCase {
     public function testABrokenDeclarationIsRefused(): void {
-        $text = new Parameter("text", Type::string());
-        $slot = new Parameter("slot", Type::number());
+        $text = new Parameter("text", StandardTypes::string());
+        $slot = new Parameter("slot", StandardTypes::number());
         $cases = [
             "Unknown type for method player.m" => [MemberReference::method("player", "m"), []],
             "No language arguments for property: string.p" => [MemberReference::property("string", "p"), [$text]],
             "A binary operator requires exactly one right operand: string.+" => [MemberReference::operator("string", BinaryOperator::Add), []],
             "A binary operator requires exactly one left operand: string.+" => [MemberReference::reflectedOperator("string", BinaryOperator::Add), []],
             "An index takes exactly one name, as a string: settings.*" => [MemberReference::index("settings"), [$slot]],
-            "Entries are either a list or a map: settings.*" => [MemberReference::entries("settings"), []],
-            "A built-in type cannot declare index: map.*" => [MemberReference::index("map"), [$text]],
         ];
-        $objectTypes = new ObjectTypes(Type::object("settings", Settings::class));
+        $types = new TypeRegistry([...StandardTypes::CLASSES, SettingsValue::class]);
 
         foreach ($cases as $message => [$reference, $parameters]) {
             try {
-                Catalog::from($objectTypes, [$this->declare($reference, $parameters)]);
+                Catalog::from($types, [$this->declare($reference, $parameters)]);
 
                 self::fail("Expected the catalog to refuse: $message");
             } catch (DefinitionError $error) {
@@ -76,7 +73,7 @@ final class CatalogTest extends TestCase {
         $this->expectException(DefinitionError::class);
         $this->expectExceptionMessage("Duplicate method: string.shout");
 
-        Catalog::from(new ObjectTypes(), [
+        Catalog::from(new TypeRegistry(StandardTypes::CLASSES), [
             $this->declare(MemberReference::method("string", "shout")),
             $this->declare(MemberReference::property("string", "shout")),
             $this->declare(MemberReference::method("string", "shout")),
@@ -87,7 +84,7 @@ final class CatalogTest extends TestCase {
         $this->expectException(DefinitionError::class);
         $this->expectExceptionMessage("Duplicate function: shout");
 
-        Catalog::from(new ObjectTypes(), [
+        Catalog::from(new TypeRegistry(StandardTypes::CLASSES), [
             $this->declare(MemberReference::method("string", "shout")),
             $this->declare(MemberReference::function("shout")),
             $this->declare(MemberReference::function("shout")),
@@ -98,7 +95,7 @@ final class CatalogTest extends TestCase {
         $types = $this->badges()->catalog->typeNames;
 
         self::assertContains("badge", $types);
-        self::assertContains(Builtin::String->value, $types);
+        self::assertContains("string", $types);
     }
 
     public function testADeclarationCanBeLookedUpByKindAndName(): void {
@@ -107,7 +104,7 @@ final class CatalogTest extends TestCase {
 
         self::assertInstanceOf(MemberDefinition::class, $label);
         self::assertSame("The label shown on the badge.", $label->description);
-        self::assertSame(Builtin::String->value, (string)$label->returns);
+        self::assertSame("string", (string)$label->returns);
         self::assertNull($catalog->definition(MemberReference::method("badge", "label")));
     }
 
@@ -129,13 +126,14 @@ final class CatalogTest extends TestCase {
         self::assertArrayNotHasKey("", $language->catalog->schema()["types"]);
     }
 
-    public function testTheCatalogListsTheIndexAndTheEntries(): void {
-        $catalog = (new LanguageBuilder())->addType(new SettingsType())->build()->catalog;
+    public function testTheCatalogListsTheIndexAndTheMembersOfTheCollection(): void {
+        $catalog = (new LanguageBuilder())->addType(SettingsValue::class)->build()->catalog;
         $members = $catalog->members("settings");
 
-        self::assertSame("The value under a key.", $members[MemberKind::Index->value][MemberReference::ANY]->description);
-        self::assertSame("map<string,mixed>", (string)$members[MemberKind::Entries->value][MemberReference::ANY]->returns);
-        self::assertNotNull($catalog->definition(MemberReference::index("settings")));
+        self::assertSame("The item under that key, or else the property of that name read off every item; null when neither is there.", $members[MemberKind::Index->value][MemberReference::ANY]->description);
+        self::assertSame("Declared here, so it wins over the collection's own first().", $members[MemberKind::Method->value]["first"]->description);
+        self::assertSame($catalog->definition(MemberReference::method("collection", "keys")), $members[MemberKind::Method->value]["keys"]);
+        self::assertSame(["list" => ["collection"], "map" => ["collection"], "settings" => ["collection"]], $catalog->schema()["ancestors"]);
     }
 
     public function testADeclarationSerialisesToJsonForHostTooling(): void {
@@ -149,13 +147,13 @@ final class CatalogTest extends TestCase {
     }
 
     private function badges(): Language {
-        return (new LanguageBuilder())->addType(new Badge())->build();
+        return (new LanguageBuilder())->addType(Badge::class)->build();
     }
 
     /**
      * @param list<Parameter> $parameters
      */
     private function declare(MemberReference $reference, array $parameters = []): Declaration {
-        return new Declaration($reference, new MemberDefinition(Type::string(), $parameters));
+        return new Declaration($reference, new MemberDefinition(StandardTypes::string(), $parameters));
     }
 }

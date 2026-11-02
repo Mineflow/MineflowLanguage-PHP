@@ -3,15 +3,17 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Values;
 
-use Mineflow\Language\Types\CollectionType;
-use Mineflow\Language\Types\NamedType;
+use Mineflow\Language\Types\DeclaredType;
 
-/**
- * @phpstan-sealed StringValue|NumberValue|BooleanValue|NullValue|ObjectValue|CollectionValue
- */
 abstract readonly class Value {
-    protected function __construct(public NamedType|CollectionType $type) {
+    public function type(): DeclaredType {
+        return TypeDeclarations::of($this::class);
     }
 
-    abstract public function native(): mixed;
+    /**
+     * The PHP value this value stands for: the value itself, unless its class gives another.
+     */
+    public function native(): mixed {
+        return $this;
+    }
 }

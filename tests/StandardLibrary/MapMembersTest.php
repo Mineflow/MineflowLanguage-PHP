@@ -34,7 +34,7 @@ final class MapMembersTest extends TestCase {
         self::assertSame(2, $this->evaluate("user.count()"));
         self::assertSame(["name", "age"], $this->evaluate("user.keys()"));
         self::assertSame(["aieuo", 20], $this->evaluate("user.values()"));
-        self::assertSame("list<number|string>", (string)$this->language->evaluate("user.values()", $this->scope)->type);
+        self::assertSame("list<number|string>", (string)$this->language->evaluate("user.values()", $this->scope)->type());
         self::assertSame("aieuo", $this->evaluate("user.first()"));
         self::assertSame(20, $this->evaluate("user.last()"));
         self::assertSame("name", $this->evaluate("user.first_key()"));
@@ -46,13 +46,13 @@ final class MapMembersTest extends TestCase {
         self::assertSame([30 => "bronze", 20 => "silver", 10 => "gold"], $this->evaluate("ranks.reverse()"));
         self::assertSame([10 => "gold"], $this->evaluate("ranks.take(1)"));
         self::assertSame([20 => "silver", 30 => "bronze"], $this->evaluate("ranks.takeLast(2)"));
-        self::assertSame("map", $this->language->evaluate("ranks.take(0)", $this->scope)->type->name);
+        self::assertSame("map", $this->language->evaluate("ranks.take(0)", $this->scope)->type()->name);
     }
 
     public function testShufflingNumbersTheValuesByTheirNewPosition(): void {
         $shuffled = $this->language->evaluate("ranks.shuffled()", $this->scope);
 
-        self::assertSame("map", $shuffled->type->name);
+        self::assertSame("map", $shuffled->type()->name);
         self::assertSame([0, 1, 2], array_keys($shuffled->native()));
     }
 

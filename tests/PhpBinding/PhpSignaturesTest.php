@@ -10,7 +10,6 @@ use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\LanguageBuilder;
-use Mineflow\Language\Types\Builtin;
 use Mineflow\Language\Types\Expression\ListOf;
 use Mineflow\Language\Types\Expression\Nullable;
 use Mineflow\Language\Values\CollectionValue;
@@ -65,9 +64,9 @@ final class PhpSignaturesTest extends TestCase {
     public function testAPhpTypeBecomesTheLanguageTypeOfTheSameName(): void {
         $language = (new LanguageBuilder())->addFunctions(new Signatures())->build();
 
-        self::assertSame("boolean", (string)$language->evaluate("yes()")->type);
-        self::assertSame("null", (string)$language->evaluate("nothing()")->type);
-        self::assertSame("string", (string)$language->evaluate("any()")->type);
+        self::assertSame("boolean", (string)$language->evaluate("yes()")->type());
+        self::assertSame("null", (string)$language->evaluate("nothing()")->type());
+        self::assertSame("string", (string)$language->evaluate("any()")->type());
     }
 
     public function testAPhpUnionBecomesTheLanguageUnionOfItsParts(): void {
@@ -93,7 +92,7 @@ final class PhpSignaturesTest extends TestCase {
 
     public function testADeclaredTypeThePhpSignatureContradictsIsRefused(): void {
         $this->refuse("list<string> conflicts with PHP type int in", new class {
-            #[Method(type: new ListOf(Builtin::String))]
+            #[Method(type: new ListOf(StringValue::class))]
             public function names(): int {
                 return 1;
             }
@@ -102,7 +101,7 @@ final class PhpSignaturesTest extends TestCase {
 
     public function testADeclaredTypeThePhpSignatureAlreadySaysIsRefused(): void {
         $this->refuse("The PHP type ?string already says null|string", new class {
-            #[Method(type: new Nullable(Builtin::String))]
+            #[Method(type: new Nullable(StringValue::class))]
             public function label(int $value): ?string {
                 return $value > 0 ? "positive" : null;
             }
@@ -143,14 +142,14 @@ final class PhpSignaturesTest extends TestCase {
             }
 
             #[Method]
-            public function names(#[Param(type: new ListOf(Builtin::String))] ListValue $names): MapValue {
+            public function names(#[Param(type: new ListOf(StringValue::class))] ListValue $names): MapValue {
                 return new MapValue(["names" => $names]);
             }
         })->build();
 
         $parameter = static fn(string $name) => (string)$language->catalog->definition(MemberReference::function($name))?->parameters[0]->type;
 
-        self::assertSame("list|map|null", $parameter("size"));
+        self::assertSame("collection|null", $parameter("size"));
         self::assertSame("number|string", $parameter("either"));
         self::assertSame("list<string>", $parameter("names"));
         self::assertSame(NumberValue::class, $language->evaluate("either(1)")->native());
@@ -163,7 +162,7 @@ final class PhpSignaturesTest extends TestCase {
     public function testACollectionValueNeedsNoTypeThatOnlyRepeatsIt(): void {
         $this->refuse("already says list in", new class {
             #[Method]
-            public function size(#[Param(type: Builtin::List)] ListValue $list): int {
+            public function size(#[Param(type: ListValue::class)] ListValue $list): int {
                 return count($list->items());
             }
         });
