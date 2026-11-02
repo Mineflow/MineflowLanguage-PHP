@@ -117,6 +117,18 @@ final class PhpSignaturesTest extends TestCase {
         });
     }
 
+    public function testARawValueParameterTakesAnyValue(): void {
+        $catalog = (new LanguageBuilder())->addFunctions(new class {
+            #[Method]
+            public function show(Value $value, ?Value $fallback = null): string {
+                return (string)$value->type();
+            }
+        })->build()->catalog;
+
+        $parameters = $catalog->definition(MemberReference::function("show"))->parameters ?? [];
+        self::assertSame(["mixed", "mixed"], array_map(static fn($parameter) => (string)$parameter->type, $parameters));
+    }
+
     public function testAPhpArrayHasToSayWhatItHolds(): void {
         $this->refuse("Specify a list/map element type with #[Param(type: ...)] in", new class {
             /**

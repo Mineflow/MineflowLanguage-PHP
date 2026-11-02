@@ -7,10 +7,8 @@ use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Attribute\FromNative;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
-use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Attribute\Property;
 use Mineflow\Language\Syntax\BinaryOperator;
-use Mineflow\Language\Types\Special;
 
 #[DeclareType("string")]
 readonly class StringValue extends Value {
@@ -54,12 +52,12 @@ readonly class StringValue extends Value {
     }
 
     #[Operator(BinaryOperator::Add, description: "The string followed by the text of the right operand.")]
-    public function concatenate(#[Param(Special::Mixed)] Value $right): string {
+    public function concatenate(Value $right): string {
         return $this->value.$right;
     }
 
     #[Operator(BinaryOperator::Subtract, description: "The string with every occurrence of the text of the right operand removed.")]
-    public function remove(#[Param(Special::Mixed)] Value $right): string {
+    public function remove(Value $right): string {
         $text = (string)$right;
         return $text === "" ? $this->value : str_replace($text, "", $this->value);
     }

@@ -245,7 +245,7 @@ final class HostCollectionsTest extends TestCase {
     public function testEveryMemberGetsTheSameValue(): void {
         $functions = new class {
             #[Method]
-            public function kind(#[Param(Special::Mixed)] Value $value): string {
+            public function kind(Value $value): string {
                 return $value instanceof CollectionValue ? "collection ".$value::class : (string)$value->type();
             }
 

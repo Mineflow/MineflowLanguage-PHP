@@ -7,7 +7,6 @@ use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
-use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Syntax\BinaryOperator;
@@ -82,22 +81,22 @@ readonly class MapValue extends CollectionValue {
     }
 
     #[Operator(BinaryOperator::Add, type: new MapOf(Special::Mixed, Placeholder::Key), description: "Every value with the right operand added to it.")]
-    public function add(#[Param(Special::Mixed)] Value $operand, #[FromContext] EvaluationContext $context): self {
+    public function add(Value $operand, #[FromContext] EvaluationContext $context): self {
         return $this->each(BinaryOperator::Add, $operand, $context);
     }
 
     #[Operator(BinaryOperator::Subtract, type: new MapOf(Special::Mixed, Placeholder::Key), description: "Every value with the right operand subtracted from it.")]
-    public function subtract(#[Param(Special::Mixed)] Value $operand, #[FromContext] EvaluationContext $context): self {
+    public function subtract(Value $operand, #[FromContext] EvaluationContext $context): self {
         return $this->each(BinaryOperator::Subtract, $operand, $context);
     }
 
     #[Operator(BinaryOperator::Multiply, type: new MapOf(Special::Mixed, Placeholder::Key), description: "Every value multiplied by the right operand.")]
-    public function multiply(#[Param(Special::Mixed)] Value $operand, #[FromContext] EvaluationContext $context): self {
+    public function multiply(Value $operand, #[FromContext] EvaluationContext $context): self {
         return $this->each(BinaryOperator::Multiply, $operand, $context);
     }
 
     #[Operator(BinaryOperator::Divide, type: new MapOf(Special::Mixed, Placeholder::Key), description: "Every value divided by the right operand.")]
-    public function divide(#[Param(Special::Mixed)] Value $operand, #[FromContext] EvaluationContext $context): self {
+    public function divide(Value $operand, #[FromContext] EvaluationContext $context): self {
         return $this->each(BinaryOperator::Divide, $operand, $context);
     }
 

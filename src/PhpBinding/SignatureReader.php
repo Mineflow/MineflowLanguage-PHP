@@ -9,6 +9,7 @@ use Mineflow\Language\Definition\Parameter;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Types\DeclaredType;
+use Mineflow\Language\Types\Type;
 use Mineflow\Language\Values\Value;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -69,10 +70,13 @@ final readonly class SignatureReader {
                 continue;
             }
 
+            $declaredType = $this->attribute($parameter, Param::class)?->type;
+            $isRawValue = $phpType instanceof ReflectionNamedType && $phpType->getName() === Value::class;
+
             $extractors[] = $this->extractors->forArgument($parameter, $phpType, count($parameters));
             $parameters[] = new Parameter(
                 $parameter->getName(),
-                $this->phpTypes->infer($phpType, $this->attribute($parameter, Param::class)?->type, $this->declaringClass($parameter), $ownerType),
+                $declaredType === null && $isRawValue ? Type::mixed() : $this->phpTypes->infer($phpType, $declaredType, $this->declaringClass($parameter), $ownerType),
                 $parameter->isOptional(),
                 $parameter->isVariadic(),
             );

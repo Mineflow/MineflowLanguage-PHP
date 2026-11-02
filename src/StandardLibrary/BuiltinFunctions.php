@@ -5,7 +5,6 @@ namespace Mineflow\Language\StandardLibrary;
 
 use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Attribute\Method;
-use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Types\Expression\MapOf;
 use Mineflow\Language\Types\Special;
@@ -30,12 +29,12 @@ final class BuiltinFunctions {
     }
 
     #[Method(description: "The text of the value, the form a template would render it in; empty without one.")]
-    public function str(#[Param(Special::Mixed)] ?Value $value = null): string {
+    public function str(?Value $value = null): string {
         return (string)$value;
     }
 
     #[Method(description: "Whether the text of the value is \"1\", \"true\" or \"yes\", in any case.")]
-    public function bool(#[Param(Special::Mixed)] ?Value $value = null): bool {
+    public function bool(?Value $value = null): bool {
         return in_array(strtolower((string)$value), ["1", "true", "yes"], true);
     }
 
