@@ -183,8 +183,8 @@ final readonly class ConvertedItemValue extends Value {
     }
 
     #[FromNative]
-    public static function fromItem(Item $item): self {
-        return new self($item);
+    public static function fromItem(Item $item, string $unused = ""): static {
+        return new static($item);
     }
 
     public function __toString(): string {
@@ -368,10 +368,10 @@ final class ObjectTypeDeclarationTest extends TestCase {
         self::assertSame([], TypeDeclarations::undecided(LabelsValue::class));
         self::assertSame("any_list", (string)(new AnyListValue([new NumberValue(1)]))->type());
         self::assertSame([], TypeDeclarations::undecided(AnyListValue::class));
+        self::assertTrue(TypeDeclarations::of(LabelsValue::class)->accepts((new SameLabelsValue([]))->type()));
 
         $refusals = [
             WiderLabelsValue::class => "The element type of labels is string, which does not accept mixed",
-            SameLabelsValue::class => "The typeHint of ".SameLabelsValue::class." says only what its parent class's type labels does; leave it out",
             MapForAListValue::class => "The typeHint of ".MapForAListValue::class." gives the type arguments of map, which its parent class's type list is not",
             CollectionForAStringValue::class => "typeHint gives the key and element types of a collection, and ".CollectionForAStringValue::class." holds no items",
             CollectionOfAPlainValue::class => "typeHint gives the key and element types of a collection, and ".CollectionOfAPlainValue::class." holds no items",
@@ -396,6 +396,20 @@ final class ObjectTypeDeclarationTest extends TestCase {
 
         $shelf->items["b"] = new StringValue("x");
         self::assertSame("live<string,number|string>", (string)$live->type());
+    }
+
+    public function testAClassCannotBeAddedTwice(): void {
+        $this->expectException(DefinitionError::class);
+        $this->expectExceptionMessage(ItemValue::class." is added twice");
+
+        (new LanguageBuilder())->addType(ItemValue::class)->addType(ItemValue::class)->build();
+    }
+
+    public function testAStandardClassCannotBeAddedAgain(): void {
+        $this->expectException(DefinitionError::class);
+        $this->expectExceptionMessage(StringValue::class." is added twice");
+
+        (new LanguageBuilder())->addType(StringValue::class)->build();
     }
 
     public function testAStandardTypeNameIsTakenLikeAnyOther(): void {

@@ -109,7 +109,7 @@ final readonly class AttributeReader {
     }
 
     /**
-     * The public instance methods of the class that declare members, with their member attributes.
+     * The public methods of the class that declare members, with their member attributes.
      * @param ReflectionClass<object> $class
      * @return list<array{ReflectionMethod, non-empty-list<MemberAttribute>}>
      */
@@ -120,8 +120,8 @@ final readonly class AttributeReader {
             if ($attributes === []) {
                 continue;
             }
-            if (!$method->isPublic() || $method->isStatic()) {
-                throw new DefinitionError("An exposed member must be a public instance method: "
+            if (!$method->isPublic()) {
+                throw new DefinitionError("An exposed member must be a public method: "
                     .$class->getName()."::".$method->getName());
             }
 
@@ -143,8 +143,7 @@ final readonly class AttributeReader {
         foreach ($attributes as $attribute) {
             $references = $this->references($attribute, $ownerType?->name, $method->getName());
 
-            $phpType = $method->getReturnType() ?? throw new DefinitionError("Missing PHP return type in $declaringClass");
-            $returns = $this->phpTypes->infer($phpType, $attribute->type, $declaringClass, $ownerType);
+            $returns = $this->phpTypes->infer($method->getReturnType(), $attribute->type, $declaringClass, $ownerType);
 
             $definition = new MemberDefinition($returns, $signature->parametersFor($references[0]->kind), $attribute->description);
             $call = $implement($definition);

@@ -42,10 +42,6 @@ final readonly class TypeRegistry {
                     ." Use #[ExtendType({$byName[$type->name]}::class)] to add members to it, or give this type another name.");
             }
 
-            if (isset($byClass[$class])) {
-                throw new DefinitionError("$class is already represented by the type {$byClass[$class]}");
-            }
-
             $byClass[$class] = $type;
             $byName[$type->name] = $class;
         }
@@ -183,13 +179,13 @@ final readonly class TypeRegistry {
     private static function convertedTypes(ReflectionMethod $method): array {
         $methodName = $method->getDeclaringClass()->getName()."::".$method->getName()."()";
         $parameters = $method->getParameters();
-        if (!$method->isPublic() || !$method->isStatic() || count($parameters) !== 1 || $parameters[0]->isVariadic() || $parameters[0]->isPassedByReference()) {
-            throw new DefinitionError("#[FromNative] goes on a public static method with one parameter: $methodName");
+        if (!$method->isPublic() || !$method->isStatic() || $parameters === [] || $method->getNumberOfRequiredParameters() > 1) {
+            throw new DefinitionError("#[FromNative] goes on a public static method that takes one argument: $methodName");
         }
 
         $returns = $method->getReturnType();
         $returnClass = $returns instanceof ReflectionNamedType && !$returns->allowsNull() ? $returns->getName() : "";
-        $returnClass = $returnClass === "self" ? $method->getDeclaringClass()->getName() : $returnClass;
+        $returnClass = in_array($returnClass, ["self", "static"], true) ? $method->getDeclaringClass()->getName() : $returnClass;
         if (!is_a($returnClass, $method->getDeclaringClass()->getName(), true)) {
             throw new DefinitionError("A #[FromNative] method returns a value of its own class: $methodName");
         }

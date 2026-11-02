@@ -78,16 +78,35 @@ final class PhpSignaturesTest extends TestCase {
         self::assertSame("never", (string)$catalog->definition(MemberReference::function("boom"))?->returns);
     }
 
-    public function testAMemberWithoutAPhpReturnTypeIsRefused(): void {
-        $this->refuse("Missing PHP return type in", new class {
+    public function testAnUntypedParameterOrResultIsMixed(): void {
+        $language = (new LanguageBuilder())->addFunctions(new class {
             /**
-             * @return string
+             * @param mixed $value
+             * @return mixed
              */
             #[Method]
-            public function guess(string $value) {
+            public function guess($value) {
                 return $value;
             }
-        });
+
+            /**
+             * @param mixed $value
+             * @return string
+             */
+            #[Method(type: StringValue::class)]
+            public function label(#[Param(type: NumberValue::class)] $value) {
+                return "#$value";
+            }
+        })->build();
+        $signature = static fn(string $name) => [
+            array_map(static fn($parameter) => (string)$parameter->type, $language->catalog->definition(MemberReference::function($name))->parameters ?? []),
+            (string)$language->catalog->definition(MemberReference::function($name))?->returns,
+        ];
+
+        self::assertSame([["mixed"], "mixed"], $signature("guess"));
+        self::assertSame([["number"], "string"], $signature("label"));
+        self::assertSame("aieuo", $language->evaluate("guess(aieuo)")->native());
+        self::assertSame("#2", $language->evaluate("label(2)")->native());
     }
 
     public function testADeclaredTypeThePhpSignatureContradictsIsRefused(): void {
@@ -99,22 +118,27 @@ final class PhpSignaturesTest extends TestCase {
         });
     }
 
-    public function testADeclaredTypeThePhpSignatureAlreadySaysIsRefused(): void {
-        $this->refuse("The PHP type ?string already says null|string", new class {
+    public function testADeclaredTypeMayRepeatThePhpSignature(): void {
+        $catalog = (new LanguageBuilder())->addFunctions(new class {
             #[Method(type: new Nullable(StringValue::class))]
-            public function label(int $value): ?string {
-                return $value > 0 ? "positive" : null;
+            public function label(#[Param(type: ListValue::class)] ListValue $list): ?string {
+                return $list->items() === [] ? null : "some";
             }
-        });
+        })->build()->catalog;
+
+        self::assertSame("null|string", (string)$catalog->definition(MemberReference::function("label"))?->returns);
+        self::assertSame("list", (string)$catalog->definition(MemberReference::function("label"))?->parameters[0]->type);
     }
 
-    public function testARawValueHasToSayWhatLanguageTypeItCarries(): void {
-        $this->refuse("Specify the language type for Value in", new class {
+    public function testARawValueResultIsMixed(): void {
+        $catalog = (new LanguageBuilder())->addFunctions(new class {
             #[Method]
             public function wrapped(): Value {
                 return new NumberValue(1);
             }
-        });
+        })->build()->catalog;
+
+        self::assertSame("mixed", (string)$catalog->definition(MemberReference::function("wrapped"))?->returns);
     }
 
     public function testARawValueParameterTakesAnyValue(): void {
@@ -129,16 +153,22 @@ final class PhpSignaturesTest extends TestCase {
         self::assertSame(["mixed", "mixed"], array_map(static fn($parameter) => (string)$parameter->type, $parameters));
     }
 
-    public function testAPhpArrayHasToSayWhatItHolds(): void {
-        $this->refuse("Specify a list/map element type with #[Param(type: ...)] in", new class {
+    public function testAPhpArrayIsAnyCollection(): void {
+        $language = (new LanguageBuilder())->addFunctions(new class {
             /**
-             * @return list<string>
+             * @param array<mixed> $items
+             * @return array<mixed>
              */
             #[Method]
-            public function items(): array {
-                return [];
+            public function reversed(array $items): array {
+                return array_reverse($items);
             }
-        });
+        })->build();
+        $definition = $language->catalog->definition(MemberReference::function("reversed"));
+
+        self::assertSame("collection", (string)$definition?->parameters[0]->type);
+        self::assertSame("collection", (string)$definition?->returns);
+        self::assertSame([2, 1], $language->evaluate("reversed({xs})", $language->scope(["xs" => [1, 2]]))->native());
     }
 
     public function testAValueClassStandsForTheKindOfValueItHolds(): void {
@@ -169,15 +199,6 @@ final class PhpSignaturesTest extends TestCase {
         self::assertSame(2, $language->evaluate("size({items})", $language->scope(["items" => ["a" => 1, "b" => 2]]))->native());
         self::assertSame(-1, $language->evaluate("size({items})", $language->scope(["items" => null]))->native());
         self::assertSame(["names" => ["a"]], $language->evaluate("names({items})", $language->scope(["items" => ["a"]]))->native());
-    }
-
-    public function testACollectionValueNeedsNoTypeThatOnlyRepeatsIt(): void {
-        $this->refuse("already says list in", new class {
-            #[Method]
-            public function size(#[Param(type: ListValue::class)] ListValue $list): int {
-                return count($list->items());
-            }
-        });
     }
 
     public function testAnIntersectionTypeHasNoLanguageCounterpart(): void {

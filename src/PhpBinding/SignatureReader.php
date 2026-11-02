@@ -9,8 +9,6 @@ use Mineflow\Language\Definition\Parameter;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Types\DeclaredType;
-use Mineflow\Language\Types\Type;
-use Mineflow\Language\Values\Value;
 use ReflectionMethod;
 use ReflectionNamedType;
 use ReflectionParameter;
@@ -35,16 +33,16 @@ final readonly class SignatureReader {
     }
 
     /**
-     * Reads the parameters of a method of an object added to the language. A type member's first parameter receives the
-     * target value; a null $ownerType means a method added as a function, which has none.
+     * Reads the parameters of a method of an object added to the language. A type member's first parameter, when it
+     * has one, receives the target value; a null $ownerType means a method added as a function, which has none.
      */
     public function readObjectMethod(ReflectionMethod $method, ?DeclaredType $ownerType): MethodSignature {
         $reflected = $method->getParameters();
-        if ($ownerType === null) {
-            return $this->readArguments($reflected, [], null);
+        if ($ownerType === null || $reflected === []) {
+            return $this->readArguments($reflected, [], $ownerType);
         }
 
-        $first = array_shift($reflected) ?? throw new DefinitionError("A type member needs a parameter for the target value.");
+        $first = array_shift($reflected);
         return $this->readArguments($reflected, [$this->extractors->forTarget($this->checkTarget($first, $ownerType))], $ownerType);
     }
 
@@ -56,13 +54,9 @@ final readonly class SignatureReader {
         /** @var list<Parameter> $parameters */
         $parameters = [];
         foreach ($reflected as $parameter) {
-            $phpType = $parameter->getType() ?? throw new DefinitionError("Missing PHP type for {$parameter->getName()}");
-            if ($parameter->isPassedByReference()) {
-                throw new DefinitionError("By-reference language arguments are unsupported.");
-            }
-
+            $phpType = $parameter->getType();
             if ($this->attribute($parameter, FromContext::class) !== null) {
-                if (!$phpType instanceof ReflectionNamedType || $phpType->getName() !== EvaluationContext::class || $parameter->isVariadic()) {
+                if (!$phpType instanceof ReflectionNamedType || $phpType->getName() !== EvaluationContext::class) {
                     throw new DefinitionError("#[FromContext] requires an EvaluationContext parameter.");
                 }
 
@@ -70,13 +64,10 @@ final readonly class SignatureReader {
                 continue;
             }
 
-            $declaredType = $this->attribute($parameter, Param::class)?->type;
-            $isRawValue = $phpType instanceof ReflectionNamedType && $phpType->getName() === Value::class;
-
             $extractors[] = $this->extractors->forArgument($parameter, $phpType, count($parameters));
             $parameters[] = new Parameter(
                 $parameter->getName(),
-                $declaredType === null && $isRawValue ? Type::mixed() : $this->phpTypes->infer($phpType, $declaredType, $this->declaringClass($parameter), $ownerType),
+                $this->phpTypes->infer($phpType, $this->attribute($parameter, Param::class)?->type, $this->declaringClass($parameter), $ownerType),
                 $parameter->isOptional(),
                 $parameter->isVariadic(),
             );
@@ -88,16 +79,13 @@ final readonly class SignatureReader {
     /**
      * Checks that the parameter can receive a target value of the owner type, and returns its PHP type.
      */
-    private function checkTarget(ReflectionParameter $parameter, DeclaredType $ownerType): ReflectionType {
-        if ($parameter->isPassedByReference() || $parameter->isVariadic() || $this->attribute($parameter, FromContext::class) !== null) {
-            throw new DefinitionError("The target value must be the type member's first ordinary parameter.");
+    private function checkTarget(ReflectionParameter $parameter, DeclaredType $ownerType): ?ReflectionType {
+        if ($this->attribute($parameter, FromContext::class) !== null) {
+            throw new DefinitionError("The first parameter of a type member receives the target value, so it cannot be #[FromContext].");
         }
 
-        $phpType = $parameter->getType() ?? throw new DefinitionError("Missing PHP type for the target value.");
-        $declaredType = $this->attribute($parameter, Param::class)?->type;
-
-        $isRawTarget = $phpType instanceof ReflectionNamedType && in_array($phpType->getName(), [Value::class, "array"], true);
-        $targetType = $declaredType === null && $isRawTarget ? $ownerType : $this->phpTypes->infer($phpType, $declaredType, $this->declaringClass($parameter), $ownerType);
+        $phpType = $parameter->getType();
+        $targetType = $this->phpTypes->infer($phpType, $this->attribute($parameter, Param::class)?->type, $this->declaringClass($parameter), $ownerType);
         if (!$targetType->resolvePlaceholders($ownerType)->accepts($ownerType)) {
             throw new DefinitionError("The target value of a type member does not accept the type it is declared on.");
         }

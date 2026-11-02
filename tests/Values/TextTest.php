@@ -4,8 +4,6 @@ declare(strict_types=1);
 namespace Mineflow\Language\Tests\Values;
 
 use Mineflow\Language\Attribute\DeclareType;
-use Mineflow\Language\Definition\MemberReference;
-use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Values\ListValue;
@@ -84,30 +82,19 @@ final class TextTest extends TestCase {
         self::assertSame("gold", $language->evaluate("places.{first}", $scope)->native());
     }
 
-    public function testAStringFormThatThrowsIsAnExternalFailure(): void {
+    public function testWhatAStringFormThrowsReachesTheCallerAsItIs(): void {
         $language = (new LanguageBuilder())->addType(CursedValue::class)->build();
 
-        try {
-            $language->render("hi {x}", $language->scope(["x" => new CursedValue()]));
-
-            self::fail("Rendering should have failed.");
-        } catch (ExternalFailure $error) {
-            self::assertSame("the object blew up", $error->getMessage());
-            self::assertNull($error->reference);
-            self::assertSame([0, 6], [$error->start(), $error->end()]);
-        }
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("the object blew up");
+        $language->render("hi {x}", $language->scope(["x" => new CursedValue()]));
     }
 
-    public function testAStringFormThatThrowsInsideAMemberFailsThatMember(): void {
+    public function testWhatAStringFormThrowsInsideAMemberReachesTheCallerAsItIs(): void {
         $language = (new LanguageBuilder())->addType(CursedValue::class)->build();
 
-        try {
-            $language->evaluate("xs.join()", $language->scope(["xs" => [new CursedValue()]]));
-
-            self::fail("Joining should have failed.");
-        } catch (ExternalFailure $error) {
-            self::assertSame("the object blew up", $error->getMessage());
-            self::assertEquals(MemberReference::method("list", "join"), $error->reference);
-        }
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("the object blew up");
+        $language->evaluate("xs.join()", $language->scope(["xs" => [new CursedValue()]]));
     }
 }

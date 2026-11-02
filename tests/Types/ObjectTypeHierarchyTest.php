@@ -12,14 +12,12 @@ use Mineflow\Language\Attribute\Property;
 use Mineflow\Language\Definition\MemberKind;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\ArgumentTypeMismatch;
-use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Placeholder;
 use Mineflow\Language\Values\Value;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 #[DeclareType("creature")]
 readonly class CreatureValue extends Value {
@@ -44,11 +42,6 @@ readonly class CreatureValue extends Value {
     #[Method(type: Placeholder::Target, description: "The same creature.")]
     public function self(): CreatureValue {
         return $this;
-    }
-
-    #[Method]
-    public function fail(): string {
-        throw new RuntimeException("failed");
     }
 
     #[Operator(BinaryOperator::Add)]
@@ -305,16 +298,6 @@ final class ObjectTypeHierarchyTest extends TestCase {
         self::assertSame("hero", (string)$this->language->evaluate("h.self()", $scope)->type());
         self::assertSame("hero", (string)$this->language->evaluate("h + 5", $scope)->type());
         self::assertSame(25, $this->language->evaluate("(h + 5).health", $scope)->native());
-    }
-
-    public function testAFailureOfAnInheritedMemberNamesTheSubtype(): void {
-        try {
-            $this->evaluate("h.fail()", ["h" => new HeroValue("aieuo")]);
-
-            self::fail("Expected an ExternalFailure.");
-        } catch (ExternalFailure $error) {
-            self::assertSame("hero.fail", (string)$error->reference);
-        }
     }
 
     public function testASubtypeIsAcceptedWhereItsAncestorIsExpected(): void {

@@ -60,9 +60,7 @@ final class TypeDeclarations {
      */
     public static function ofCollection(CollectionValue $collection): CollectionType {
         ["type" => $type, "undecided" => $undecided] = self::declaration($collection::class);
-        if (!$type instanceof CollectionType) {
-            throw new DefinitionError("The type $type of ".$collection::class." is not one of a collection");
-        }
+        assert($type instanceof CollectionType);
         if ($undecided === []) {
             return $type;
         }
@@ -166,9 +164,7 @@ final class TypeDeclarations {
 
         $parentType = self::of($parent);
         $undecided = self::undecided($parent);
-        if (!$parentType instanceof CollectionType) {
-            throw new DefinitionError("The type $parentType of $parent is not one of a collection");
-        }
+        assert($parentType instanceof CollectionType);
         $hint = $attribute->typeHint;
         if ($hint === null) {
             return ["type" => new CollectionType($name, $class, $parentType->key, $parentType->element), "undecided" => $undecided];
@@ -191,13 +187,6 @@ final class TypeDeclarations {
         $key = $hint->key === null ? null : TypeExpressions::resolve($hint->key, $resolver);
         $element = $hint->element === null ? null : TypeExpressions::resolve($hint->element, $resolver);
         $narrowed = $parentType->withArguments($key, $element);
-
-        // A type argument the hint gives says something when the parent class leaves it undecided or has another one.
-        $addsInformation = static fn(?Type $given, Type $inherited, Placeholder $placeholder) => $given !== null
-            && (in_array($placeholder, $undecided, true) || !$given->equals($inherited));
-        if (!$addsInformation($key, $parentType->key, Placeholder::Key) && !$addsInformation($element, $parentType->element, Placeholder::Element)) {
-            throw new DefinitionError("The typeHint of $class says only what its parent class's type $parentType does; leave it out");
-        }
 
         return [
             "type" => new CollectionType($name, $class, $narrowed->key, $narrowed->element),

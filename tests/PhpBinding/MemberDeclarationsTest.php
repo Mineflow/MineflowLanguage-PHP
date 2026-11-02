@@ -60,14 +60,26 @@ final class MemberDeclarationsTest extends TestCase {
         })->build();
     }
 
-    public function testAnExposedMemberMustBeAPublicInstanceMethod(): void {
+    public function testAStaticMethodCanBeExposed(): void {
+        $language = (new LanguageBuilder())->addExtension(new #[ExtendType(StringValue::class)]
+        class {
+            #[Method]
+            public static function shout(string $value): string {
+                return strtoupper($value);
+            }
+        })->build();
+
+        self::assertSame("AIEUO", $language->evaluate("s.shout()", $language->scope(["s" => "aieuo"]))->native());
+    }
+
+    public function testAnExposedMemberMustBePublic(): void {
         $this->expectException(DefinitionError::class);
-        $this->expectExceptionMessage("An exposed member must be a public instance method");
+        $this->expectExceptionMessage("An exposed member must be a public method");
 
         (new LanguageBuilder())->addExtension(new #[ExtendType(StringValue::class)]
         class {
             #[Method]
-            public static function shout(string $value): string {
+            protected function shout(string $value): string {
                 return strtoupper($value);
             }
         })->build();
@@ -85,22 +97,34 @@ final class MemberDeclarationsTest extends TestCase {
         })->build();
     }
 
-    public function testTheTargetValueCannotBeVariadic(): void {
-        $this->expectException(DefinitionError::class);
-        $this->expectExceptionMessage("The target value must be the type member's first ordinary parameter.");
-
-        (new LanguageBuilder())->addExtension(new #[ExtendType(StringValue::class)]
+    public function testTheTargetValueGoesToTheFirstParameterWhateverItsShape(): void {
+        $language = (new LanguageBuilder())->addExtension(new #[ExtendType(StringValue::class)]
         class {
             #[Method]
             public function first(string ...$values): string {
                 return $values[0];
             }
+
+            #[Method]
+            public function bump(string &$value): string {
+                return $value .= "!";
+            }
+
+            #[Property]
+            public function constant(): int {
+                return 1;
+            }
         })->build();
+        $scope = $language->scope(["s" => "aieuo"]);
+
+        self::assertSame("aieuo", $language->evaluate("s.first()", $scope)->native());
+        self::assertSame("aieuo!", $language->evaluate("s.bump()", $scope)->native());
+        self::assertSame(1, $language->evaluate("s.constant", $scope)->native());
     }
 
     public function testTheContextCannotTakeTheTargetValuesPlace(): void {
         $this->expectException(DefinitionError::class);
-        $this->expectExceptionMessage("The target value must be the type member's first ordinary parameter.");
+        $this->expectExceptionMessage("The first parameter of a type member receives the target value, so it cannot be #[FromContext].");
 
         (new LanguageBuilder())->addExtension(new #[ExtendType(StringValue::class)]
         class {

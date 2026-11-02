@@ -4,8 +4,6 @@ declare(strict_types=1);
 namespace Mineflow\Language\Runtime\Engine;
 
 use Closure;
-use Mineflow\Language\Error\ExternalFailure;
-use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Error\SourceError;
 use Mineflow\Language\Runtime\EvaluationContext;
@@ -28,7 +26,6 @@ use Mineflow\Language\Syntax\Node\UnaryExpressionNode;
 use Mineflow\Language\Values\NumberValue;
 use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\Value;
-use Throwable;
 
 final readonly class Evaluator {
     /**
@@ -57,10 +54,6 @@ final readonly class Evaluator {
             return $step();
         } catch (SourceError $error) {
             throw $error->at($node->start, $node->end);
-        } catch (LanguageException $error) {
-            throw $error;
-        } catch (Throwable $error) {
-            throw new InternalError("Unexpected ".$error::class.": ".$error->getMessage(), 0, $error);
         }
     }
 
@@ -90,7 +83,7 @@ final readonly class Evaluator {
      */
     private function concatenate(ConcatenationNode $node, EvaluationContext $context): string {
         return implode("", array_map(
-            fn(Node $part) => $part instanceof StringNode ? $part->text : $this->text($this->evaluate($part, $context)),
+            fn(Node $part) => $part instanceof StringNode ? $part->text : (string)$this->evaluate($part, $context),
             $node->parts,
         ));
     }
@@ -104,15 +97,8 @@ final readonly class Evaluator {
             $node instanceof StringNode => $node->text,
             $node instanceof ComputedNameNode => $this->name($node->name, $context),
             $node instanceof ConcatenationNode => $this->concatenate($node, $context),
-            default => $this->text($this->evaluate($node, $context)),
+            default => (string)$this->evaluate($node, $context),
         };
-    }
-
-    /**
-     * Writes the value as text; the __toString() of a host's value is host code.
-     */
-    private function text(Value $value): string {
-        return ExternalFailure::guard(static fn() => (string)$value);
     }
 
     private function resolve(string $name, Scope $scope): Value {

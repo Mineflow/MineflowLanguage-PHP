@@ -5,7 +5,6 @@ namespace Mineflow\Language\Tests;
 
 use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Attribute\Property;
-use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Runtime\Scope;
@@ -95,7 +94,8 @@ final class LookupTest extends TestCase {
     }
 
     public function testAFailureOfAMemberOnThePathIsNotAMissingName(): void {
-        $this->expectException(ExternalFailure::class);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("broken");
         $this->language->lookup("fragile.broken", $this->scope);
     }
 }

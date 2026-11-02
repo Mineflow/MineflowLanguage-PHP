@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime\Engine;
 
-use Mineflow\Language\Error\ExternalFailure;
-use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\ReturnTypeMismatch;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\Member;
@@ -21,12 +19,9 @@ final readonly class MemberInvoker {
         $reference = $member->declaration->reference;
         $definition = $member->declaration->definition;
         $targetType = $target?->type();
-        if ($targetType?->name !== $reference->typeName) {
-            throw new InternalError("$reference cannot be called on ".($targetType ?? "nothing").".");
-        }
 
         $arguments = $this->argumentBinder->bind($reference, $definition, $arguments, $targetType);
-        $result = ExternalFailure::guard(static fn() => $member->implementation->call($target, $arguments, $context), $reference);
+        $result = $member->implementation->call($target, $arguments, $context);
 
         $expected = $definition->resultType($targetType);
         if (!$expected->accepts($result->type())) {

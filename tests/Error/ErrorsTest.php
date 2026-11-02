@@ -6,7 +6,6 @@ namespace Mineflow\Language\Tests\Error;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Definition\MemberKind;
 use Mineflow\Language\Error\EvaluationError;
-use Mineflow\Language\Error\ExternalFailure;
 use Mineflow\Language\Error\InvalidValue;
 use Mineflow\Language\Error\SourceError;
 use Mineflow\Language\Error\UndefinedMember;
@@ -59,15 +58,12 @@ final class ErrorsTest extends TestCase {
         self::assertSame([3, 11], [$error->start(), $error->end()]);
     }
 
-    public function testAMemberThatThrowsBecomesAnExternalFailure(): void {
+    public function testWhatAMemberThrowsReachesTheCallerAsItIs(): void {
         $language = (new LanguageBuilder())->addFunctions(new Unreliable())->build();
-        $error = $this->errorFrom($language, "fail()");
 
-        self::assertInstanceOf(ExternalFailure::class, $error);
-        self::assertSame("the host blew up", $error->getMessage());
-        self::assertInstanceOf(RuntimeException::class, $error->getPrevious());
-        self::assertSame("fail", (string)$error->reference);
-        self::assertSame([0, 6], [$error->start(), $error->end()]);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("the host blew up");
+        $language->evaluate("1 + fail()");
     }
 
     public function testAnErrorTheHostDefinesPassesThroughWithItsRange(): void {

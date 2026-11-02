@@ -20,43 +20,24 @@ final readonly class PhpTypes {
     }
 
     /**
+     * The language type of a PHP type: the declared one, which the PHP type has to accept, or else the one the PHP
+     * type says. No PHP type and a raw Value say mixed; an array says any collection.
      * @param TypeExpression|class-string|null $declaredType
      */
-    public function infer(ReflectionType $phpType, TypeExpression|string|null $declaredType, string $declaringClass, ?Type $targetType = null): Type {
-        $isValueObject = $phpType instanceof ReflectionNamedType && $phpType->getName() === Value::class;
-        $isArray = false;
-
-        $parts = $phpType instanceof ReflectionUnionType ? $phpType->getTypes() : [$phpType];
-        foreach ($parts as $part) {
-            $isArray = $isArray || ($part instanceof ReflectionNamedType && $part->getName() === "array");
+    public function infer(?ReflectionType $phpType, TypeExpression|string|null $declaredType, string $declaringClass, ?Type $targetType = null): Type {
+        $phpEquivalent = $phpType === null || ($phpType instanceof ReflectionNamedType && $phpType->getName() === Value::class)
+            ? Type::mixed()
+            : $this->fromPhpType($phpType, $declaringClass);
+        if ($declaredType === null) {
+            return $phpEquivalent;
         }
 
-        if ($declaredType !== null) {
-            $type = TypeExpressions::resolve($declaredType, new MemberTypeResolver($this->types, $targetType));
-
-            if (!$isValueObject) {
-                $phpEquivalent = $this->fromPhpType($phpType, $declaringClass);
-                $resolvedType = $type->resolvePlaceholders($targetType);
-
-                if (!$phpEquivalent->accepts($resolvedType)) {
-                    throw new DefinitionError("$type conflicts with PHP type $phpType in $declaringClass");
-                }
-                if (!$isArray && $type->equals($phpEquivalent)) {
-                    throw new DefinitionError("The PHP type $phpType already says $type in $declaringClass; leave the language type out");
-                }
-            }
-
-            return $type;
+        $type = TypeExpressions::resolve($declaredType, new MemberTypeResolver($this->types, $targetType));
+        if (!$phpEquivalent->accepts($type->resolvePlaceholders($targetType))) {
+            throw new DefinitionError("$type conflicts with PHP type $phpType in $declaringClass");
         }
 
-        if ($isValueObject) {
-            throw new DefinitionError("Specify the language type for Value in $declaringClass");
-        }
-        if ($isArray) {
-            throw new DefinitionError("Specify a list/map element type with #[Param(type: ...)] in $declaringClass");
-        }
-
-        return $this->fromPhpType($phpType, $declaringClass);
+        return $type;
     }
 
     private function fromPhpType(ReflectionType $phpType, string $declaringClass): Type {

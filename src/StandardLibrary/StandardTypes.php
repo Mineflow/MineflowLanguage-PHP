@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\StandardLibrary;
 
-use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\DeclaredType;
 use Mineflow\Language\Types\Type;
@@ -64,9 +63,7 @@ final class StandardTypes {
      */
     private static function collectionOf(string $class, ?Type $element, ?Type $key): DeclaredType {
         $type = TypeDeclarations::of($class);
-        if (!$type instanceof CollectionType) {
-            throw new DefinitionError("$type holds no items, so it takes no key or item type");
-        }
+        assert($type instanceof CollectionType);
 
         return $type->withArguments($key, $element);
     }

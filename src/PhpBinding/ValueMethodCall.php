@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Mineflow\Language\PhpBinding;
 
 use Mineflow\Language\Definition\MemberDefinition;
-use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\MemberImplementation;
 use Mineflow\Language\Values\Value;
@@ -28,9 +27,7 @@ final readonly class ValueMethodCall implements MemberImplementation {
      * @param list<Value> $arguments
      */
     public function call(?Value $target, array $arguments, EvaluationContext $context): Value {
-        if ($target === null) {
-            throw new InternalError("Missing the target value of a type member.");
-        }
+        assert($target !== null);
 
         $phpArguments = [];
         foreach ($this->extractors as $extract) {

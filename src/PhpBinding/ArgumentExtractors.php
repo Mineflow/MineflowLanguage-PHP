@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Mineflow\Language\PhpBinding;
 
 use Closure;
-use Mineflow\Language\Error\InternalError;
 use Mineflow\Language\Error\InvalidIntegerConversion;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Values\CollectionValue;
@@ -19,15 +18,13 @@ use ReflectionUnionType;
  */
 final readonly class ArgumentExtractors {
     /**
+     * @param ReflectionType|null $phpType
      * @return Extractor
      */
-    public function forTarget(ReflectionType $phpType): Closure {
+    public function forTarget(?ReflectionType $phpType): Closure {
         $convert = $this->unwrapper($phpType);
         return static function (?Value $value, array $arguments, EvaluationContext $context) use ($convert): array {
-            if ($value === null) {
-                throw new InternalError("Missing the target value of a type member.");
-            }
-
+            assert($value !== null);
             return [$convert($value)];
         };
     }
@@ -43,7 +40,7 @@ final readonly class ArgumentExtractors {
      * @param int $index The position of the language argument the parameter receives.
      * @return Extractor
      */
-    public function forArgument(ReflectionParameter $parameter, ReflectionType $phpType, int $index): Closure {
+    public function forArgument(ReflectionParameter $parameter, ?ReflectionType $phpType, int $index): Closure {
         $convert = $this->unwrapper($phpType);
         if ($parameter->isVariadic()) {
             /** @param list<Value> $arguments */
@@ -60,11 +57,11 @@ final readonly class ArgumentExtractors {
 
     /**
      * Returns a function that passes a language value to a PHP parameter of this type. A parameter of Value classes
-     * gets the value as is, or PHP null when it is of none of them; others get the PHP value.
+     * gets the value as is, or PHP null when it is of none of them; others, untyped ones included, get the PHP value.
      * @return Closure(Value): mixed
      */
-    private function unwrapper(ReflectionType $phpType): Closure {
-        $types = $phpType instanceof ReflectionUnionType ? $phpType->getTypes() : [$phpType];
+    private function unwrapper(?ReflectionType $phpType): Closure {
+        $types = $phpType instanceof ReflectionUnionType ? $phpType->getTypes() : array_filter([$phpType]);
         $names = array_map(static fn(ReflectionType $type) => $type instanceof ReflectionNamedType ? $type->getName() : "", $types);
 
         $valueClasses = array_values(array_filter($names, static fn(string $name) => is_a($name, Value::class, true)));
