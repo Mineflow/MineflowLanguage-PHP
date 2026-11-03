@@ -13,6 +13,7 @@ use Mineflow\Language\Runtime\Engine\OperatorResolution;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Runtime\Scope;
+use Mineflow\Language\Serialization\ValueSerializer;
 use Mineflow\Language\Syntax\Node\ConcatenationNode;
 use Mineflow\Language\Syntax\Node\Node;
 use Mineflow\Language\Syntax\Parser;
@@ -21,14 +22,16 @@ use Mineflow\Language\Values\ValueMapper;
 
 final readonly class Language {
     public Catalog $catalog;
+    public ValueSerializer $serializer;
     private ValueMapper $valueMapper;
     private MemberInvoker $invoker;
     private MemberAccess $memberAccess;
     private OperatorResolution $operatorResolution;
     private Evaluator $evaluator;
 
-    public function __construct(MemberTable $members) {
+    public function __construct(MemberTable $members, ValueSerializer $serializer) {
         $this->catalog = $members->catalog;
+        $this->serializer = $serializer;
         $this->valueMapper = new ValueMapper($members->catalog->types);
         $this->invoker = new MemberInvoker();
         $this->memberAccess = new MemberAccess($members, $this->invoker);

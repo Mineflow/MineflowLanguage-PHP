@@ -13,6 +13,8 @@ use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\Member;
 use Mineflow\Language\Runtime\MemberImplementation;
 use Mineflow\Language\Runtime\MemberTable;
+use Mineflow\Language\Serialization\ValueSerializer;
+use Mineflow\Language\StandardLibrary\StandardCodecs;
 use Mineflow\Language\StandardLibrary\StandardTypes;
 use Mineflow\Language\Types\TypeRegistry;
 use Mineflow\Language\Values\StringValue;
@@ -30,10 +32,11 @@ final class Shout implements MemberImplementation {
 
 final class MemberTableTest extends TestCase {
     public function testAMemberNeedsNoAttributeToBeCalled(): void {
-        $language = new Language(MemberTable::from(new TypeRegistry(StandardTypes::CLASSES), [
+        $types = new TypeRegistry(StandardTypes::CLASSES);
+        $language = new Language(MemberTable::from($types, [
             $this->shout(MemberReference::method("string", "shout")),
             $this->shout(MemberReference::function("shout"), [new Parameter("text", StandardTypes::string())]),
-        ]));
+        ]), ValueSerializer::from($types, StandardCodecs::all()));
         $scope = $language->scope(["word" => "hi"]);
 
         self::assertSame("HI", $language->evaluate("word.shout()", $scope)->native());
