@@ -23,6 +23,7 @@ final class Parser {
     /** @var list<Token> */
     private array $tokens = [];
     private int $position = 0;
+    private string $source = "";
 
     public function parseExpression(string $source): Node {
         return $this->parse($source, false);
@@ -38,6 +39,7 @@ final class Parser {
     private function parse(string $source, bool $isTemplate): Node {
         $this->tokens = (new Lexer())->tokenize($source, $isTemplate);
         $this->position = 0;
+        $this->source = $source;
         if ($isTemplate) {
             $children = [];
             while (!$this->at(TokenKind::Eof)) {
@@ -163,19 +165,78 @@ final class Parser {
     }
 
     private function argument(): Node {
-        $node = $this->expression();
-        // A bare word is passed as text, not a variable (so a variable of the same name doesn't change its meaning). A numeric word stays a NumberNode.
-        if ($node instanceof IdentifierNode) {
-            return new StringNode($node->name, $node->start, $node->end);
-        }
-        if ($node instanceof ComputedIdentifierNode && $node->name instanceof ConcatenationNode) {
-            // An argument that is only `{expression}` passes the expression's value instead of referring to it as a name.
-            if (count($node->name->parts) === 1) {
-                return $node->name->parts[0];
+        return $this->isTextArgument() ? $this->textArgument() : $this->expression();
+    }
+
+    /**
+     * Whether the argument ahead is written text: one with no operator and no parenthesis outside its `{...}`.
+     */
+    private function isTextArgument(): bool {
+        $depth = 0;
+        for ($i = $this->position; ; $i++) {
+            $kind = $this->tokens[$i]->kind;
+            if ($kind === TokenKind::Eof) {
+                return true;
             }
-            return $node->name;
+            if ($kind === TokenKind::OpenBrace) {
+                $depth++;
+            } elseif ($kind === TokenKind::CloseBrace) {
+                $depth--;
+            } elseif ($depth === 0 && in_array($kind, [TokenKind::Comma, TokenKind::CloseParen], true)) {
+                return true;
+            } elseif ($depth === 0 && in_array($kind, [TokenKind::Operator, TokenKind::OpenParen], true)) {
+                return false;
+            }
         }
-        return $node;
+    }
+
+    /**
+     * Reads a text argument as it is written, words, dots and the space between them, with each `{...}` in it written as
+     * its value's text. One that is only `{expression}` passes the value itself, and one that reads as a number is that number.
+     */
+    private function textArgument(): Node {
+        $start = $this->peek()->start;
+        /** @var list<Node> $parts */
+        $parts = [];
+        $text = "";
+        $textStart = $start;
+        $previous = null;
+        while (!$this->at(TokenKind::Comma) && !$this->at(TokenKind::CloseParen) && !$this->at(TokenKind::CloseBrace) && !$this->at(TokenKind::Eof)) {
+            $token = $this->peek();
+            if ($previous !== null) {
+                // Between two tokens is the space written there, and the `]` that closes a bracket index.
+                $text .= preg_replace("/\\S/", "", substr($this->source, $previous->end, $token->start - $previous->end));
+            }
+            if ($token->kind === TokenKind::OpenBrace) {
+                if ($text !== "") {
+                    $parts[] = new StringNode($text, $textStart, $token->start);
+                    $text = "";
+                }
+                $this->position++;
+                $parts[] = $this->expression();
+                $previous = $this->expect(TokenKind::CloseBrace);
+                $textStart = $previous->end;
+            } else {
+                $text .= $token->text;
+                $previous = $this->tokens[$this->position++];
+            }
+        }
+        if ($previous === null) {
+            $this->fail("Expected an identifier or parenthesized expression.", TokenKind::Word);
+        }
+        if ($text !== "") {
+            $parts[] = new StringNode($text, $textStart, $previous->end);
+        }
+
+        if (count($parts) > 1) {
+            return new ConcatenationNode($parts, $start, $previous->end);
+        }
+        $part = $parts[0];
+        if (!$part instanceof StringNode) {
+            return $part;
+        }
+        $number = NumberNode::parse($part->text);
+        return $number === null ? $part : new NumberNode($number, $part->start, $part->end);
     }
 
     private function peek(): Token {

@@ -30,6 +30,8 @@ final class LexerTest extends TestCase {
 
     public function testSurroundingSpaceIsNotPartOfAWord(): void {
         self::assertSame(["padded"], $this->words("  padded  "));
+        $word = (new Lexer())->tokenize("  padded  ", false)[0];
+        self::assertSame([2, 8], [$word->start, $word->end]);
     }
 
     public function testACommaSeparatesOnlyInsideAnArgumentList(): void {
