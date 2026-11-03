@@ -403,9 +403,10 @@ final class ObjectTypeDeclarationTest extends TestCase {
         $shelf = new Shelf();
         $shelf->items = ["a" => new NumberValue(1)];
         $live = new LiveValue($shelf);
-        self::assertSame("live", (string)$live->type());
+        $before = (string)$live->type();
 
         $shelf->items["b"] = new StringValue("x");
+        self::assertSame("live", $before);
         self::assertSame("live", (string)$live->type());
     }
 
