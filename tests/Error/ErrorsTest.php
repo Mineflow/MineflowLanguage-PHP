@@ -55,7 +55,7 @@ final class ErrorsTest extends TestCase {
 
         self::assertInstanceOf(UndefinedVariable::class, $error);
         self::assertSame("missing", $error->name);
-        self::assertSame([3, 11], [$error->start(), $error->end()]);
+        self::assertSame([4, 11], [$error->start(), $error->end()]);
     }
 
     public function testWhatAMemberThrowsReachesTheCallerAsItIs(): void {
@@ -72,7 +72,7 @@ final class ErrorsTest extends TestCase {
 
         self::assertInstanceOf(OutOfStock::class, $error);
         self::assertSame("apple", $error->item);
-        self::assertSame([3, 14], [$error->start(), $error->end()]);
+        self::assertSame([4, 14], [$error->start(), $error->end()]);
     }
 
     public function testAValueTheLanguageCannotTakeIsNotWrapped(): void {

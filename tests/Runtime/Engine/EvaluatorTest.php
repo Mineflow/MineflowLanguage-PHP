@@ -7,6 +7,7 @@ use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Error\ArgumentTypeMismatch;
 use Mineflow\Language\Error\SourceError;
 use Mineflow\Language\Error\UndefinedVariable;
+use Mineflow\Language\Error\UnexpectedToken;
 use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
@@ -81,6 +82,32 @@ final class EvaluatorTest extends TestCase {
         self::assertSame("xy", $this->evaluate("identity({a}{b})"));
         // A number is a literal, so it is passed as a number and does not match a string parameter.
         self::assertSame(ArgumentTypeMismatch::class, $this->errorOf("identity(1)"));
+    }
+
+    public function testAnArgumentWithoutAnOperatorOrAParenthesisIsTheTextWrittenThere(): void {
+        // Dots are text as well, even after the name of a variable.
+        self::assertSame("user.name", $this->evaluate("identity(user.name)"));
+        self::assertSame("Hello world.", $this->evaluate("identity(Hello world.)"));
+        self::assertSame("two  words .", $this->evaluate("identity( two  words . )"));
+        self::assertSame(".", $this->evaluate("identity(.)"));
+        // A bracket index reads as the dot it stands for.
+        self::assertSame("scores.0", $this->evaluate("identity(scores[0])"));
+        self::assertSame(4, $this->evaluate("double(2.)"));
+    }
+
+    public function testBracesInATextArgumentWriteTheValueAsText(): void {
+        self::assertSame("x.name", $this->evaluate("identity({a}.name)"));
+        self::assertSame("<x y>", $this->evaluate("identity(<{a} {b}>)"));
+    }
+
+    public function testAnArgumentWithAnOperatorOrAParenthesisIsAnExpression(): void {
+        self::assertSame("aieuo", $this->evaluate("identity((user.name))"));
+        self::assertSame("AIEUO", $this->evaluate("identity(user.name.uppercase())"));
+        self::assertSame(8, $this->evaluate("double({n} - 1)"));
+    }
+
+    public function testAnEmptyArgumentIsASyntaxError(): void {
+        self::assertSame(UnexpectedToken::class, $this->errorOf("identity(a,)"));
     }
 
     public function testAMethodTakesTheTextOfANumberWhereAnOperatorDoesNot(): void {

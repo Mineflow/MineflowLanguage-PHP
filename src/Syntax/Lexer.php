@@ -19,9 +19,12 @@ final class Lexer {
         $flush = static function (int $end, bool $literal) use (&$tokens, &$buffer, &$start): void {
             $text = $literal ? $buffer : trim($buffer);
             if ($text !== "") {
+                // A word spans only its text, so the space around it stays between the tokens.
+                $leading = strspn($buffer, " \t\n\r\0\x0B", 0, strlen($buffer) - strlen($text));
+                $trailing = strlen($buffer) - $leading - strlen($text);
                 // phpstan cannot infer the branch where true is passed to $literal in templates.
                 // @phpstan-ignore ternary.alwaysFalse
-                $tokens[] = new Token($literal ? TokenKind::Text : TokenKind::Word, $text, $start, $end);
+                $tokens[] = new Token($literal ? TokenKind::Text : TokenKind::Word, $text, $start + $leading, $end - $trailing);
             }
             $buffer = "";
         };
