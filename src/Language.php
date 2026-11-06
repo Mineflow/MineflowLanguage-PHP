@@ -68,16 +68,22 @@ final readonly class Language {
     /**
      * @throws LanguageException
      */
-    public function evaluate(string|Node $expression, ?Scope $scope = null): Value {
-        $node = is_string($expression) ? $this->parseExpression($expression) : $expression;
-        return $this->evaluator->evaluate($node, $this->context($scope ?? $this->scope()));
+    public function evaluate(string|Expression $expression, ?Scope $scope = null): Value {
+        $expression = is_string($expression) ? new Expression($expression) : $expression;
+        return $this->evaluator->evaluate($expression->node(), $this->context($scope ?? $this->scope()));
     }
 
     /**
      * @throws LanguageException
      */
-    public function render(string|Node $template, ?Scope $scope = null): string {
-        $node = is_string($template) ? $this->parseTemplate($template) : $template;
+    public function render(string|Template $template, ?Scope $scope = null): string {
+        $template = is_string($template) ? new Template($template) : $template;
+        $text = $template->plainText();
+        if ($text !== null) {
+            return $text;
+        }
+
+        $node = $template->node();
         if (!$node instanceof ConcatenationNode) {
             $node = new ConcatenationNode([$node], $node->start, $node->end);
         }
