@@ -3,16 +3,29 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\StandardLibrary;
 
+use Closure;
+use DateTimeImmutable;
+use DateTimeZone;
 use Mineflow\Language\Attribute\FromContext;
 use Mineflow\Language\Attribute\Method;
+use Mineflow\Language\Error\InvalidIntegerConversion;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Types\Expression\MapOf;
 use Mineflow\Language\Types\Special;
+use Mineflow\Language\Values\DateTimeValue;
 use Mineflow\Language\Values\MapValue;
 use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\Value;
 
-final class BuiltinFunctions {
+final readonly class BuiltinFunctions {
+    /**
+     * @param DateTimeZone|null $timezone The zone of the dates and times now() and datetime() make; null takes PHP's
+     *     default zone when they are made.
+     * @param (Closure(): DateTimeImmutable)|null $clock The current moment for now(); null reads the system clock.
+     */
+    public function __construct(private ?DateTimeZone $timezone = null, private ?Closure $clock = null) {
+    }
+
     #[Method(description: "The number π.")]
     public function pi(): float {
         return M_PI;
@@ -41,5 +54,23 @@ final class BuiltinFunctions {
     #[Method(type: new MapOf(Special::Mixed, StringValue::class), description: "Every global, by name: what is read outside the run.")]
     public function vars(#[FromContext] EvaluationContext $context): MapValue {
         return new MapValue($context->scope()->globals());
+    }
+
+    #[Method(description: "The current date and time.")]
+    public function now(): DateTimeValue {
+        $now = $this->clock === null ? new DateTimeImmutable() : ($this->clock)();
+        return new DateTimeValue($now->setTimezone($this->timezone()));
+    }
+
+    /**
+     * @throws InvalidIntegerConversion
+     */
+    #[Method(description: "The date and time a number of seconds since 1970-01-01 00:00:00 UTC stands for.")]
+    public function datetime(int|float $timestamp): DateTimeValue {
+        return (new DateTimeValue((new DateTimeImmutable("@0"))->setTimezone($this->timezone())))->plusSeconds($timestamp);
+    }
+
+    private function timezone(): DateTimeZone {
+        return $this->timezone ?? new DateTimeZone(date_default_timezone_get());
     }
 }

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\DateTime;
+namespace Mineflow\Language\Values;
 
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -12,16 +12,16 @@ use Mineflow\Language\Attribute\Operator;
 use Mineflow\Language\Attribute\Property;
 use Mineflow\Language\Error\InvalidIntegerConversion;
 use Mineflow\Language\Syntax\BinaryOperator;
-use Mineflow\Language\Values\Value;
 
 #[DeclareType("datetime")]
-final readonly class DateTimeValue extends Value {
+readonly class DateTimeValue extends Value {
     public const string DEFAULT_FORMAT = "Y-m-d H:i:s";
 
     /**
+     * Final so that a calculation makes a value of the class of its target.
      * @param string $format The PHP date() format the value is written in. A calculation keeps it.
      */
-    public function __construct(public DateTimeImmutable $value, public string $format = self::DEFAULT_FORMAT) {
+    final public function __construct(public DateTimeImmutable $value, public string $format = self::DEFAULT_FORMAT) {
     }
 
     #[FromNative]
@@ -42,7 +42,7 @@ final readonly class DateTimeValue extends Value {
      * microsecond.
      * @throws InvalidIntegerConversion When the seconds are not finite or do not fit a PHP integer.
      */
-    public function plusSeconds(int|float $seconds): self {
+    public function plusSeconds(int|float $seconds): static {
         if (is_int($seconds)) {
             return $this->with($this->value->modify(sprintf("%+d seconds", $seconds)));
         }
@@ -103,12 +103,12 @@ final readonly class DateTimeValue extends Value {
     }
 
     #[Operator(BinaryOperator::Add, description: "The date and time that many seconds later.")]
-    public function add(int|float $seconds): self {
+    public function add(int|float $seconds): static {
         return $this->plusSeconds($seconds);
     }
 
     #[Operator(BinaryOperator::Add, reflected: true, description: "The date and time that many seconds later, with the number on the left.")]
-    public function addReflected(int|float $seconds): self {
+    public function addReflected(int|float $seconds): static {
         return $this->plusSeconds($seconds);
     }
 
@@ -116,7 +116,7 @@ final readonly class DateTimeValue extends Value {
      * @throws InvalidIntegerConversion
      */
     #[Operator(BinaryOperator::Subtract, description: "The date and time that many seconds earlier, or the seconds from another date and time to this one.")]
-    public function subtract(int|float|DateTimeInterface $right): int|float|self {
+    public function subtract(int|float|DateTimeInterface $right): int|float|static {
         if (!$right instanceof DateTimeInterface) {
             return $this->plusSeconds(-$right);
         }
@@ -127,7 +127,7 @@ final readonly class DateTimeValue extends Value {
         return $microseconds === 0 ? $seconds : $seconds + $microseconds / 1_000_000;
     }
 
-    private function with(DateTimeImmutable $value): self {
-        return new self($value, $this->format);
+    private function with(DateTimeImmutable $value): static {
+        return new static($value, $this->format);
     }
 }

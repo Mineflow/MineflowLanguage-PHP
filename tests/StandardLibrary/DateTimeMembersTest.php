@@ -1,24 +1,27 @@
 <?php
 declare(strict_types=1);
 
-namespace Mineflow\Language\Tests\DateTime;
+namespace Mineflow\Language\Tests\StandardLibrary;
 
 use DateTime;
 use DateTimeImmutable;
 use DateTimeZone;
-use Mineflow\Language\DateTime\DateTimeCodec;
-use Mineflow\Language\DateTime\DateTimeFunctions;
-use Mineflow\Language\DateTime\DateTimeValue;
+use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Error\InvalidIntegerConversion;
 use Mineflow\Language\Error\InvalidValue;
 use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Runtime\Scope;
+use Mineflow\Language\Values\DateTimeValue;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-final class DateTimeTest extends TestCase {
+#[DeclareType("time_of_day")]
+final readonly class TimeOfDayValue extends DateTimeValue {
+}
+
+final class DateTimeMembersTest extends TestCase {
     private const string NOW = "2026-11-05 12:34:56.250000";
 
     private Language $language;
@@ -31,9 +34,9 @@ final class DateTimeTest extends TestCase {
 
     private function languageIn(DateTimeZone $timezone): Language {
         return (new LanguageBuilder())
-            ->addType(DateTimeValue::class)
-            ->addFunctions(new DateTimeFunctions($timezone, static fn() => new DateTimeImmutable(self::NOW." UTC")))
-            ->addCodec(new DateTimeCodec())
+            ->addType(TimeOfDayValue::class)
+            ->setTimezone($timezone)
+            ->setClock(static fn() => new DateTimeImmutable(self::NOW." UTC"))
             ->build();
     }
 
@@ -44,6 +47,26 @@ final class DateTimeTest extends TestCase {
     public function testNowIsTheClockInTheGivenZone(): void {
         self::assertSame("2026-11-05 21:34:56", $this->language->render("{now()}"));
         self::assertSame("datetime", (string)$this->language->evaluate("now()")->type());
+    }
+
+    public function testEveryLanguageHasDatesInPhpsDefaultZone(): void {
+        $zone = date_default_timezone_get();
+        date_default_timezone_set("Asia/Tokyo");
+        try {
+            self::assertSame("1970-01-01 09:00:00", Language::create()->render("{datetime(0)}"));
+        } finally {
+            date_default_timezone_set($zone);
+        }
+    }
+
+    public function testACalculationKeepsTheClassOfASubtype(): void {
+        $scope = $this->language->scope(["t" => new TimeOfDayValue(new DateTimeImmutable("2026-11-05 07:00:00", $this->tokyo), "H:i")]);
+
+        $later = $this->language->evaluate("t + 60", $scope);
+
+        self::assertInstanceOf(TimeOfDayValue::class, $later);
+        self::assertSame("07:01", (string)$later);
+        self::assertSame(7, $this->language->evaluate("t.hours", $scope)->native());
     }
 
     /**
