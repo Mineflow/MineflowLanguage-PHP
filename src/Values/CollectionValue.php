@@ -93,7 +93,7 @@ abstract readonly class CollectionValue extends Value {
     #[Method(type: new Nullable(new CollectionOf(Special::Mixed, Placeholder::Key)), description: "The property of that name read off every item, or null when one item has none.")]
     public function pluck(string $name, #[FromContext] EvaluationContext $context): ?self {
         $items = [];
-        foreach ($this->items() as $key => $item) {
+        foreach ($this->eachItem() as $key => $item) {
             $result = $context->findProperty($item, $name);
             if ($result === null) {
                 return null;
@@ -108,6 +108,15 @@ abstract readonly class CollectionValue extends Value {
     #[Index(type: Special::Mixed, description: "The item under that key, or else the property of that name read off every item; null when neither is there.")]
     public function entry(string $name, #[FromContext] EvaluationContext $context): ?Value {
         return $this->item($name) ?? $this->pluck($name, $context);
+    }
+
+    /**
+     * The items one after another, for a member that may stop before the last one. A class that makes its items
+     * when they are read gives them here one at a time, so that what is never reached is never made.
+     * @return iterable<string|int, Value>
+     */
+    protected function eachItem(): iterable {
+        return $this->items();
     }
 
     /**
