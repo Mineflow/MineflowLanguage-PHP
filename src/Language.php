@@ -77,6 +77,24 @@ final readonly class Language {
     }
 
     /**
+     * Renders a template once for each item of the collections its embeddings give, as a form shows one button
+     * for each item: `{xs}th` gives `1th`, `2th` and `3th` for the list [1, 2, 3]. Collections are paired by
+     * position, and one with fewer items gives empty text past its end. Only empty collections give no text at
+     * all, and a template with no collection gives the one text render() gives.
+     * @return list<string>
+     * @throws LanguageException
+     */
+    public function expand(string|Template $template, ?Scope $scope = null, ?Notices $notices = null): array {
+        $template = is_string($template) ? new Template($template) : $template;
+        $text = $template->plainText();
+        if ($text !== null) {
+            return [$text];
+        }
+
+        return $this->evaluator->expand($template->node(), $this->context($scope ?? $this->scope(), $notices ?? new Notices()));
+    }
+
+    /**
      * The value a path of names reaches, read one name after another the way `a.b.c` reads them, or
      * null when a name on it reaches nothing: a variable the scope does not have, or a name the value
      * before it answers with no property, entry or index. Only the path itself is reported this way;
