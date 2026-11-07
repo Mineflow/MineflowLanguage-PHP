@@ -15,8 +15,6 @@ use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Serialization\ValueSerializer;
 use Mineflow\Language\Syntax\Node\ConcatenationNode;
-use Mineflow\Language\Syntax\Node\Node;
-use Mineflow\Language\Syntax\Parser;
 use Mineflow\Language\Values\Value;
 use Mineflow\Language\Values\ValueMapper;
 
@@ -55,14 +53,6 @@ final readonly class Language {
      */
     public function wrap(mixed $value): Value {
         return $this->valueMapper->wrap($value);
-    }
-
-    public function parseExpression(string $source): Node {
-        return (new Parser())->parseExpression($source);
-    }
-
-    public function parseTemplate(string $source): Node {
-        return (new Parser())->parseTemplate($source);
     }
 
     /**
