@@ -5,6 +5,7 @@ namespace Mineflow\Language\StandardLibrary;
 
 use Mineflow\Language\Serialization\ValueCodec;
 use Mineflow\Language\StandardLibrary\Codecs\BooleanCodec;
+use Mineflow\Language\StandardLibrary\Codecs\DateTimeCodec;
 use Mineflow\Language\StandardLibrary\Codecs\ListCodec;
 use Mineflow\Language\StandardLibrary\Codecs\MapCodec;
 use Mineflow\Language\StandardLibrary\Codecs\NullCodec;
@@ -20,6 +21,6 @@ final class StandardCodecs {
      * @return list<ValueCodec<*>>
      */
     public static function all(): array {
-        return [new StringCodec(), new NumberCodec(), new BooleanCodec(), new NullCodec(), new ListCodec(), new MapCodec()];
+        return [new StringCodec(), new NumberCodec(), new BooleanCodec(), new NullCodec(), new ListCodec(), new MapCodec(), new DateTimeCodec()];
     }
 }

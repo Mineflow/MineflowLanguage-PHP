@@ -8,6 +8,7 @@ use Mineflow\Language\Types\DeclaredType;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Values\BooleanValue;
 use Mineflow\Language\Values\CollectionValue;
+use Mineflow\Language\Values\DateTimeValue;
 use Mineflow\Language\Values\ListValue;
 use Mineflow\Language\Values\MapValue;
 use Mineflow\Language\Values\NullValue;
@@ -28,6 +29,7 @@ final class StandardTypes {
         CollectionValue::class,
         ListValue::class,
         MapValue::class,
+        DateTimeValue::class,
     ];
 
     public static function string(): DeclaredType {
@@ -44,6 +46,10 @@ final class StandardTypes {
 
     public static function null(): DeclaredType {
         return TypeDeclarations::of(NullValue::class);
+    }
+
+    public static function datetime(): DeclaredType {
+        return TypeDeclarations::of(DateTimeValue::class);
     }
 
     public static function collection(?Type $element = null, ?Type $key = null): DeclaredType {

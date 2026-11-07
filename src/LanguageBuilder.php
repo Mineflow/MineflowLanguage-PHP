@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace Mineflow\Language;
 
 use Closure;
+use DateTimeImmutable;
+use DateTimeZone;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\PhpBinding\AttributeReader;
 use Mineflow\Language\Serialization\ValueCodec;
@@ -26,6 +28,9 @@ final class LanguageBuilder {
     private array $deserializationAliases = [];
     /** @var (Closure(Value): Value)|null */
     private ?Closure $serializationFallback = null;
+    private ?DateTimeZone $timezone = null;
+    /** @var (Closure(): DateTimeImmutable)|null */
+    private ?Closure $clock = null;
 
     /**
      * Adds the type a Value class or interface declares with #[DeclareType].
@@ -76,8 +81,25 @@ final class LanguageBuilder {
         return $this;
     }
 
+    /**
+     * Sets the zone of the dates and times now() and datetime() make. Without one, they are in PHP's default zone.
+     */
+    public function setTimezone(DateTimeZone $timezone): self {
+        $this->timezone = $timezone;
+        return $this;
+    }
+
+    /**
+     * @param Closure(): DateTimeImmutable $clock The current moment now() reads instead of the system clock.
+     */
+    public function setClock(Closure $clock): self {
+        $this->clock = $clock;
+        return $this;
+    }
+
     public function build(): Language {
-        $members = AttributeReader::read([...StandardTypes::CLASSES, ...$this->types], $this->extensions, [new BuiltinFunctions(), ...$this->functions]);
+        $functions = [new BuiltinFunctions($this->timezone, $this->clock), ...$this->functions];
+        $members = AttributeReader::read([...StandardTypes::CLASSES, ...$this->types], $this->extensions, $functions);
         $serializer = ValueSerializer::from(
             $members->catalog->types,
             [...StandardCodecs::all(), ...$this->codecs],
