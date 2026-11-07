@@ -7,9 +7,9 @@ use DateTime;
 use DateTimeImmutable;
 use DateTimeZone;
 use Mineflow\Language\Attribute\DeclareType;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Error\InvalidIntegerConversion;
 use Mineflow\Language\Error\InvalidValue;
-use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Runtime\Scope;
@@ -142,10 +142,12 @@ final class DateTimeMembersTest extends TestCase {
         $this->language->evaluate("now() + 99999999999999999999999");
     }
 
-    public function testADateIsNotCalculatedWithText(): void {
-        $this->expectException(UnsupportedCalculation::class);
-        $this->expectExceptionMessage("Unsupported calculation: datetime - string");
-        $this->language->evaluate("now() - name", $this->language->scope(["name" => "aieuo"]));
+    public function testTextThatIsNoNumberIsNoSecondsFromADate(): void {
+        $notices = new Notices();
+        $scope = $this->language->scope(["t" => $this->language->evaluate("datetime(0)"), "name" => "aieuo"]);
+
+        self::assertSame("1970-01-01 09:00:00", $this->language->render("{t - name}", $scope, $notices));
+        self::assertSame("\"aieuo\" is not a number, so 0 is used.", $notices->all()[0]->message);
     }
 
     public function testAPhpDateBecomesADatetime(): void {

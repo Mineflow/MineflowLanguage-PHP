@@ -10,9 +10,9 @@ use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
 use Mineflow\Language\Attribute\Param;
 use Mineflow\Language\Definition\MemberReference;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Error\ArgumentTypeMismatch;
 use Mineflow\Language\Error\UndefinedMember;
-use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\StandardLibrary\StandardTypes;
@@ -163,13 +163,12 @@ final class HostCollectionsTest extends TestCase {
         $scope = $this->language->scope(["s" => new SettingsValue($this->settings), "list" => [1, 2], "label" => "total: "]);
         self::assertSame("total: <money:100,user:<name:aieuo>>", $this->language->evaluate("label + s", $scope)->native());
 
-        foreach (["s + 10" => "settings + number", "list + s" => "list + settings", "s + list" => "settings + list", "s + s" => "settings + settings"] as $source => $types) {
-            try {
-                $this->language->evaluate($source, $scope);
-                self::fail("Expected $source to be unsupported.");
-            } catch (UnsupportedCalculation $error) {
-                self::assertSame("Unsupported calculation: $types", $error->getMessage(), $source);
-            }
+        // Without an operator of its own, the type is calculated as the number it is not, 0. A list calculates it
+        // item by item, and has no key the type has.
+        foreach (["s + 10" => [10.0, 1], "list + s" => [[], 1], "s + list" => [0, 2], "s + s" => [0, 2]] as $source => [$result, $count]) {
+            $notices = new Notices();
+            self::assertSame($result, $this->language->evaluate($source, $scope, $notices)->native(), $source);
+            self::assertCount($count, $notices->all(), $source);
         }
     }
 
@@ -216,9 +215,7 @@ final class HostCollectionsTest extends TestCase {
         $scope = $language->scope(["s" => new SettingsValue($this->settings)]);
         self::assertSame(2, $language->evaluate("size({s})", $scope)->native());
         self::assertSame(2, $language->evaluate("entries({s})", $scope)->native());
-
-        $this->expectException(ArgumentTypeMismatch::class);
-        $language->evaluate("mapSize({s})", $scope);
+        self::assertSame(2, $language->evaluate("mapSize({s})", $scope)->native());
     }
 
     public function testThePhpObjectConvertsToItsValueWhereverTheLanguageTakesIt(): void {
@@ -264,11 +261,13 @@ final class HostCollectionsTest extends TestCase {
 
         self::assertSame("collection ".SettingsValue::class, $language->evaluate("kind({s})", $scope)->native());
         self::assertSame("config.yml", $language->evaluate("where({s})", $scope)->native());
+        self::assertSame("<MONEY:100,USER:<NAME:AIEUO>>", $language->evaluate("shout({s})", $scope)->native());
+        // Nothing makes the type from text, so the text is refused.
         try {
-            $language->evaluate("shout({s})", $scope);
+            $language->evaluate("where(config.yml)", $scope);
             self::fail("Expected the argument to be refused.");
         } catch (ArgumentTypeMismatch $error) {
-            self::assertSame("settings", (string)$error->actual);
+            self::assertSame(["settings", "string"], [(string)$error->expected, (string)$error->actual]);
         }
     }
 

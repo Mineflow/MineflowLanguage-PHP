@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Mineflow\Language\Tests\StandardLibrary;
 
 use Mineflow\Language\Error\DivisionByZero;
-use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Language;
 use Mineflow\Language\Syntax\BinaryOperator;
 use PHPUnit\Framework\TestCase;
@@ -33,10 +32,10 @@ final class NumberMembersTest extends TestCase {
         }
     }
 
-    public function testANumberIsNeverJoinedToAStringOnItsLeft(): void {
-        $this->expectException(UnsupportedCalculation::class);
-        $this->expectExceptionMessage("Unsupported calculation: number + string");
-        $this->language->evaluate("1 + name", $this->language->scope(["name" => "aieuo"]));
+    public function testANumberIsJoinedToTextOnEitherSide(): void {
+        $scope = $this->language->scope(["name" => "aieuo"]);
+        self::assertSame("1aieuo", $this->language->evaluate("1 + name", $scope)->native());
+        self::assertSame("aieuo1", $this->language->evaluate("name + 1", $scope)->native());
     }
 
     public function testRoundingIsBothAPropertyAndAMethod(): void {

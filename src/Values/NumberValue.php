@@ -5,9 +5,11 @@ namespace Mineflow\Language\Values;
 
 use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Attribute\FromNative;
+use Mineflow\Language\Attribute\FromValue;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
 use Mineflow\Language\Attribute\Property;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Error\DivisionByZero;
 use Mineflow\Language\Syntax\BinaryOperator;
 
@@ -19,6 +21,29 @@ readonly class NumberValue extends Value {
     #[FromNative]
     public static function fromNative(int|float $value): self {
         return new self($value);
+    }
+
+    #[FromValue]
+    public static function fromValue(Value $value, Notices $notices): self {
+        $number = self::fromNumeric($value) ?? match (true) {
+            $value instanceof BooleanValue => new self($value->value ? 1 : 0),
+            $value instanceof NullValue => new self(0),
+            default => null,
+        };
+        if ($number !== null) {
+            return $number;
+        }
+
+        $notices->add(($value instanceof StringValue ? "\"$value\"" : "A value of the type {$value->type()}")." is not a number, so 0 is used.");
+        return new self(0);
+    }
+
+    public static function fromNumeric(Value $value): ?self {
+        return match (true) {
+            $value instanceof self => $value,
+            $value instanceof StringValue && is_numeric($value->value) => new self($value->value + 0),
+            default => null,
+        };
     }
 
     public function native(): int|float {

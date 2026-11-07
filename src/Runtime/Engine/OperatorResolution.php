@@ -3,29 +3,45 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime\Engine;
 
+use LogicException;
 use Mineflow\Language\Definition\MemberReference;
-use Mineflow\Language\Error\UnsupportedCalculation;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\Member;
 use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Syntax\BinaryOperator;
+use Mineflow\Language\Values\NumberValue;
+use Mineflow\Language\Values\StringValue;
+use Mineflow\Language\Values\TypeDeclarations;
 use Mineflow\Language\Values\Value;
 
 /**
- * Computes `left symbol right` with the first operator that applies:
+ * Computes `left symbol right`. Text that reads as a number is that number when the other operand is a number or
+ * such text too. Then the first of these applies:
  *
  * 1. If the right operand is a subtype of the left operand's type and has its own reflected operator, use it.
  * 2. If the left operand's type has an operator that accepts the right operand, use it.
  * 3. If the types differ and the right operand's type has a reflected operator that accepts the left operand, use it.
- *
+ * 4. `+` with text on either side joins the text of both.
+ * 5. If the left operand's type has the operator and the right operand converts to what it takes, use it.
+ * 6. If the right operand's type has the reflected operator and the left operand converts to what it takes, use it.
+ * 7. Calculate both operands as numbers.
  */
 final readonly class OperatorResolution {
-    public function __construct(private MemberTable $members, private MemberInvoker $invoker) {
+    public function __construct(private MemberTable $members, private MemberInvoker $invoker, private ValueConversion $conversion) {
     }
 
     public function operate(BinaryOperator $operator, Value $left, Value $right, EvaluationContext $context): Value {
+        $leftNumber = NumberValue::fromNumeric($left);
+        $rightNumber = NumberValue::fromNumeric($right);
+        if ($leftNumber !== null && $rightNumber !== null) {
+            [$left, $right] = [$leftNumber, $rightNumber];
+        }
+
         return $this->calculate($operator, $left, $right, $context)
-            ?? throw new UnsupportedCalculation($operator, $left->type(), $right->type());
+            ?? $this->join($operator, $left, $right)
+            ?? $this->calculateConverted($operator, $left, $right, $context)
+            ?? $this->calculateNumbers($operator, $left, $right, $context);
     }
 
     /**
@@ -47,6 +63,48 @@ final readonly class OperatorResolution {
         }
 
         return null;
+    }
+
+    private function join(BinaryOperator $operator, Value $left, Value $right): ?StringValue {
+        return $operator === BinaryOperator::Add && ($left instanceof StringValue || $right instanceof StringValue)
+            ? new StringValue($left.$right)
+            : null;
+    }
+
+    private function calculateConverted(BinaryOperator $operator, Value $left, Value $right, EvaluationContext $context): ?Value {
+        $declared = $this->members->find(MemberReference::operator($left->type()->name, $operator));
+        $converted = $declared === null ? null : $this->convertOperand($declared, $right, $context->notices());
+        if ($declared !== null && $converted !== null) {
+            return $this->invoker->invoke($declared, $left, [$converted], $context);
+        }
+
+        $reflected = $this->members->find(MemberReference::reflectedOperator($right->type()->name, $operator));
+        $converted = $reflected === null ? null : $this->convertOperand($reflected, $left, $context->notices());
+        if ($reflected !== null && $converted !== null) {
+            return $this->invoker->invoke($reflected, $right, [$converted], $context);
+        }
+
+        return null;
+    }
+
+    /**
+     * An operand the operator takes as it is was already turned down by rules 1 to 3; using it here would bring
+     * back a reflected operator between operands of one type, which rule 3 leaves out.
+     */
+    private function convertOperand(Member $operator, Value $operand, Notices $notices): ?Value {
+        $expected = $operator->declaration->definition->parameters[0]->type;
+        return $expected->accepts($operand->type()) ? null : $this->conversion->convert($expected, $operand, $notices);
+    }
+
+    private function calculateNumbers(BinaryOperator $operator, Value $left, Value $right, EvaluationContext $context): Value {
+        $number = TypeDeclarations::of(NumberValue::class);
+        $notices = $context->notices();
+        $leftNumber = $this->conversion->convert($number, $left, $notices);
+        $rightNumber = $this->conversion->convert($number, $right, $notices);
+        assert($leftNumber instanceof NumberValue && $rightNumber instanceof NumberValue);
+
+        return $this->calculate($operator, $leftNumber, $rightNumber, $context)
+            ?? throw new LogicException("number has no {$operator->value} that takes a number");
     }
 
     /**

@@ -5,6 +5,8 @@ namespace Mineflow\Language\Tests\Error;
 
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Definition\MemberKind;
+use Mineflow\Language\Diagnostics\Notice;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Error\EvaluationError;
 use Mineflow\Language\Error\InvalidValue;
 use Mineflow\Language\Error\SourceError;
@@ -87,7 +89,6 @@ final class ErrorsTest extends TestCase {
         $language = Language::create();
         $scope = $language->scope(["word" => "aieuo"]);
         $cases = [
-            "word.missing" => [MemberKind::Property, "Undefined property: string.missing"],
             "word.missing()" => [MemberKind::Method, "Undefined method: string.missing"],
             "missing(1)" => [MemberKind::Function, "Undefined function: missing"],
         ];
@@ -105,14 +106,27 @@ final class ErrorsTest extends TestCase {
         self::assertSame(["string", "missing"], [$error->reference->typeName, $error->reference->name]);
     }
 
-    public function testAPropertyOfATypeWithoutAnIndexNamesTheType(): void {
+    public function testAPropertyNothingGivesIsNullWithANoticeOfTheType(): void {
         $language = Language::create();
         $scope = $language->scope(["scores" => [3, 1]]);
-        $error = $this->errorFrom($language, "scores.first().missing", $scope);
+        $notices = new Notices();
 
-        self::assertInstanceOf(UndefinedMember::class, $error);
-        self::assertSame("Undefined property: number.missing", $error->getMessage());
-        self::assertNull($language->evaluate("scores.missing", $scope)->native());
+        self::assertNull($language->evaluate("scores.first().missing", $scope, $notices)->native());
+        self::assertSame(["A value of the type number has no property missing, so null is used."], array_map(
+            static fn(Notice $notice) => $notice->message,
+            $notices->all(),
+        ));
+        self::assertSame([0, 22], [$notices->all()[0]->start, $notices->all()[0]->end]);
+    }
+
+    public function testAMemberOfNullIsNullWithoutANotice(): void {
+        $language = Language::create();
+        $scope = $language->scope(["user" => ["name" => "aieuo"]]);
+        $notices = new Notices();
+
+        self::assertNull($language->evaluate("user.missing.name", $scope, $notices)->native());
+        self::assertNull($language->evaluate("user.missing.uppercase()", $scope, $notices)->native());
+        self::assertSame([], $notices->all());
     }
 
     private function errorFrom(Language $language, string $source, ?Scope $scope = null): SourceError {

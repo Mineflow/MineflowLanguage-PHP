@@ -7,6 +7,7 @@ use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\UndefinedMember;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\MemberTable;
+use Mineflow\Language\Values\NullValue;
 use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\Value;
 
@@ -26,7 +27,12 @@ final readonly class MemberAccess {
      * @param list<Value> $arguments
      */
     public function callMethod(Value $target, string $name, array $arguments, EvaluationContext $context): Value {
-        return $this->invoke(MemberReference::method($target->type()->name, $name), $target, $arguments, $context);
+        $reference = MemberReference::method($target->type()->name, $name);
+        if ($target instanceof NullValue && $this->members->find($reference) === null) {
+            return $target;
+        }
+
+        return $this->invoke($reference, $target, $arguments, $context);
     }
 
     /**

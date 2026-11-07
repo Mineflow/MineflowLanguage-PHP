@@ -5,9 +5,10 @@ namespace Mineflow\Language\Values;
 
 use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Attribute\FromContext;
+use Mineflow\Language\Attribute\FromValue;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
-use Mineflow\Language\Error\UnsupportedCalculation;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\CollectionType;
@@ -25,6 +26,15 @@ readonly class MapValue extends CollectionValue {
      */
     public function __construct(private array $items = [], ?Type $element = null) {
         $this->type = self::hintedType(static::class, $element);
+    }
+
+    #[FromValue]
+    public static function fromValue(Value $value, Notices $notices): self {
+        return match (true) {
+            $value instanceof CollectionValue => new self($value->items()),
+            $value instanceof NullValue => new self(),
+            default => new self([$value]),
+        };
     }
 
     /**
@@ -101,10 +111,6 @@ readonly class MapValue extends CollectionValue {
     }
 
     private function each(BinaryOperator $operator, Value $operand, EvaluationContext $context): self {
-        if ($operand instanceof CollectionValue) {
-            throw new UnsupportedCalculation($operator, $this->type(), $operand->type());
-        }
-
-        return new self(array_map(static fn(Value $item) => $context->operate($operator, $item, $operand), $this->items));
+        return new self($this->calculateItems($operator, $operand, $context));
     }
 }

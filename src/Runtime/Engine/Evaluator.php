@@ -31,11 +31,16 @@ final readonly class Evaluator {
      * @throws LanguageException
      */
     public function evaluate(Node $node, EvaluationContext $context): Value {
+        $notices = $context->notices();
+        $from = $notices->count();
         try {
-            return $this->dispatch($node, $context);
+            $value = $this->dispatch($node, $context);
         } catch (SourceError $error) {
             throw $error->at($node->start, $node->end);
         }
+
+        $notices->locate($from, $node->start, $node->end);
+        return $value;
     }
 
     /**

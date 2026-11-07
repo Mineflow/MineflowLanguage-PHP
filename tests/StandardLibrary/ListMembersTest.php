@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Tests\StandardLibrary;
 
-use Mineflow\Language\Error\UnsupportedCalculation;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Language;
 use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\StandardLibrary\StandardTypes;
@@ -46,16 +46,46 @@ final class ListMembersTest extends TestCase {
         self::assertSame(["name!", "age!"], $this->evaluate("words + suffix"));
     }
 
-    public function testAnItemThatCannotBeCalculatedFailsTheWholeList(): void {
-        $this->expectException(UnsupportedCalculation::class);
-        $this->expectExceptionMessage("Unsupported calculation: number + string");
-        $this->evaluate("scores + suffix");
+    public function testEachItemIsCalculatedAsItWouldBeAlone(): void {
+        self::assertSame(["3!", "1!", "2!"], $this->evaluate("scores + suffix"));
     }
 
-    public function testTwoListsAreNotCalculatedItemByItem(): void {
-        $this->expectException(UnsupportedCalculation::class);
-        $this->expectExceptionMessage("Unsupported calculation: list + list");
-        $this->evaluate("scores + scores");
+    public function testTwoListsAreCalculatedItemByItem(): void {
+        $scope = $this->language->scope(["a" => [1, 2, 3], "b" => [10, 20, 30], "names" => ["a", "b", "c"]]);
+        $notices = new Notices();
+
+        self::assertSame([11, 22, 33], $this->language->evaluate("a + b", $scope, $notices)->native());
+        self::assertSame([9, 18, 27], $this->language->evaluate("b - a", $scope, $notices)->native());
+        self::assertSame([10, 40, 90], $this->language->evaluate("a * b", $scope, $notices)->native());
+        self::assertSame([10, 10, 10], $this->language->evaluate("b / a", $scope, $notices)->native());
+        self::assertSame(["a1", "b2", "c3"], $this->language->evaluate("names + a", $scope, $notices)->native());
+        self::assertSame(0, $notices->count());
+    }
+
+    public function testAListOfOneItemIsCalculatedWithEveryItemOfTheOther(): void {
+        $scope = $this->language->scope(["a" => [1, 2, 3], "one" => [100]]);
+
+        self::assertSame([101, 102, 103], $this->language->evaluate("a + one", $scope)->native());
+        self::assertSame([99, 98, 97], $this->language->evaluate("one - a", $scope)->native());
+    }
+
+    public function testListsOfDifferentLengthsAreCalculatedAsFarAsTheShorterGoes(): void {
+        $scope = $this->language->scope(["a" => [1, 2, 3], "short" => [5, 6], "empty" => []]);
+        $notices = new Notices();
+
+        self::assertSame([6, 8], $this->language->evaluate("a + short", $scope, $notices)->native());
+        self::assertSame([], $this->language->evaluate("a + empty", $scope, $notices)->native());
+        self::assertSame(array_fill(0, 2, "The collections have different keys, so only the items under keys both have are calculated."), array_map(
+            static fn($notice) => $notice->message,
+            $notices->all(),
+        ));
+    }
+
+    public function testNestedListsAreCalculatedItemByItemAtEveryDepth(): void {
+        $scope = $this->language->scope(["grid" => [[1, 2], [3, 4]], "rows" => [10, 20], "cells" => [[1, 1], [2, 2]]]);
+
+        self::assertSame([[11, 12], [23, 24]], $this->language->evaluate("grid + rows", $scope)->native());
+        self::assertSame([[1, 2], [6, 8]], $this->language->evaluate("grid * cells", $scope)->native());
     }
 
     public function testReadingItems(): void {

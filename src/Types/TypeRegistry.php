@@ -4,17 +4,20 @@ declare(strict_types=1);
 namespace Mineflow\Language\Types;
 
 use Mineflow\Language\Attribute\FromNative;
+use Mineflow\Language\Attribute\FromValue;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Error\DefinitionError;
 use Mineflow\Language\Values\TypeDeclarations;
 use Mineflow\Language\Values\Value;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
+use ReflectionParameter;
 use ReflectionUnionType;
 
 /**
- * The types a language has: those its Value classes and interfaces declare, and the PHP values their #[FromNative]
- * methods convert.
+ * The types a language has: those its Value classes and interfaces declare, the PHP values their #[FromNative]
+ * methods convert, and the values of other types their #[FromValue] methods convert.
  */
 final readonly class TypeRegistry {
     /** The PHP types other than classes that a #[FromNative] method can convert. An array becomes a list or a map. */
@@ -27,7 +30,9 @@ final readonly class TypeRegistry {
     /** @var array<string, list<DeclaredType>> */
     private array $ancestors;
     /** @var array<string, array{class-string, string}> The Value class and its method that convert each PHP type. */
-    private array $converters;
+    private array $nativeConverters;
+    /** @var array<class-string, string> */
+    private array $valueConverters;
 
     /**
      * @param list<class-string> $classes Value classes and interfaces with #[DeclareType].
@@ -63,7 +68,8 @@ final readonly class TypeRegistry {
             $ancestors[$type->name] = [...$parents, ...array_values($implemented)];
         }
         $this->ancestors = $ancestors;
-        $this->converters = self::readConverters(array_keys($byClass));
+        $this->nativeConverters = self::readNativeConverters(array_keys($byClass));
+        $this->valueConverters = self::readValueConverters(array_keys($byClass));
     }
 
     /**
@@ -104,7 +110,7 @@ final readonly class TypeRegistry {
      * @param string $phpType A PHP type other than a class, or a class, which the nearest parent class's conversion takes.
      */
     public function typeForPhpType(string $phpType): ?DeclaredType {
-        $converter = $this->converterFor($phpType);
+        $converter = $this->nativeConverterFor($phpType);
         return $converter === null ? null : $this->of($converter[0]);
     }
 
@@ -112,7 +118,7 @@ final readonly class TypeRegistry {
      * Converts the PHP value with the #[FromNative] method for its PHP type, or returns null when there is none.
      */
     public function convertNative(mixed $value): ?Value {
-        $converter = $this->converterFor(match (true) {
+        $converter = $this->nativeConverterFor(match (true) {
             is_object($value) => $value::class,
             is_string($value) => "string",
             is_int($value) => "int",
@@ -130,17 +136,27 @@ final readonly class TypeRegistry {
         return $converted instanceof Value ? $converted : null;
     }
 
+    public function convertValue(DeclaredType $type, Value $value, Notices $notices): ?Value {
+        $method = $this->valueConverters[$type->class] ?? null;
+        if ($method === null) {
+            return null;
+        }
+
+        $converted = $type->class::$method($value, $notices);
+        return $converted instanceof Value && $type->accepts($converted->type()) ? $converted : null;
+    }
+
     /**
      * @return array{class-string, string}|null
      */
-    private function converterFor(string $phpType): ?array {
+    private function nativeConverterFor(string $phpType): ?array {
         if (!class_exists($phpType) && !interface_exists($phpType)) {
-            return $this->converters[$phpType] ?? null;
+            return $this->nativeConverters[$phpType] ?? null;
         }
 
         foreach ([$phpType, ...array_values(class_parents($phpType) ?: []), ...array_values(class_implements($phpType) ?: [])] as $class) {
-            if (isset($this->converters[$class])) {
-                return $this->converters[$class];
+            if (isset($this->nativeConverters[$class])) {
+                return $this->nativeConverters[$class];
             }
         }
         return null;
@@ -151,7 +167,7 @@ final readonly class TypeRegistry {
      * @param list<class-string> $classes
      * @return array<string, array{class-string, string}>
      */
-    private static function readConverters(array $classes): array {
+    private static function readNativeConverters(array $classes): array {
         $converters = [];
         foreach ($classes as $class) {
             foreach ((new ReflectionClass($class))->getMethods() as $method) {
@@ -170,6 +186,46 @@ final readonly class TypeRegistry {
         }
 
         return $converters;
+    }
+
+    /**
+     * @param list<class-string> $classes
+     * @return array<class-string, string>
+     */
+    private static function readValueConverters(array $classes): array {
+        $converters = [];
+        foreach ($classes as $class) {
+            foreach ((new ReflectionClass($class))->getMethods() as $method) {
+                if ($method->getAttributes(FromValue::class) === [] || $method->getDeclaringClass()->getName() !== $class) {
+                    continue;
+                }
+                if (isset($converters[$class])) {
+                    throw new DefinitionError("$class declares #[FromValue] on both $converters[$class]() and {$method->getName()}()");
+                }
+
+                self::checkValueConverter($method);
+                $converters[$class] = $method->getName();
+            }
+        }
+
+        return $converters;
+    }
+
+    private static function checkValueConverter(ReflectionMethod $method): void {
+        $class = $method->getDeclaringClass()->getName();
+        $parameterTypes = array_map(
+            static fn(ReflectionParameter $parameter) => ($type = $parameter->getType()) instanceof ReflectionNamedType ? $type->getName() : "",
+            $method->getParameters(),
+        );
+        $returns = $method->getReturnType();
+        $returnClass = $returns instanceof ReflectionNamedType ? $returns->getName() : "";
+        $returnClass = in_array($returnClass, ["self", "static"], true) ? $class : $returnClass;
+
+        if (!$method->isPublic() || !$method->isStatic() || $parameterTypes !== [Value::class, Notices::class]
+            || !is_a($returnClass, $class, true)) {
+            throw new DefinitionError('#[FromValue] goes on a public static method fromValue(Value $value, Notices $notices): ?self: '
+                ."$class::{$method->getName()}()");
+        }
     }
 
     /**

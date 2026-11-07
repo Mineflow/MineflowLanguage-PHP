@@ -4,12 +4,15 @@ declare(strict_types=1);
 namespace Mineflow\Language;
 
 use Mineflow\Language\Definition\Catalog;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Error\LanguageException;
+use Mineflow\Language\Runtime\Engine\ArgumentBinder;
 use Mineflow\Language\Runtime\Engine\Context;
 use Mineflow\Language\Runtime\Engine\Evaluator;
 use Mineflow\Language\Runtime\Engine\MemberAccess;
 use Mineflow\Language\Runtime\Engine\MemberInvoker;
 use Mineflow\Language\Runtime\Engine\OperatorResolution;
+use Mineflow\Language\Runtime\Engine\ValueConversion;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Runtime\Scope;
@@ -31,9 +34,10 @@ final readonly class Language {
         $this->catalog = $members->catalog;
         $this->serializer = $serializer;
         $this->valueMapper = new ValueMapper($members->catalog->types);
-        $this->invoker = new MemberInvoker();
+        $conversion = new ValueConversion($members->catalog->types);
+        $this->invoker = new MemberInvoker(new ArgumentBinder($conversion));
         $this->memberAccess = new MemberAccess($members, $this->invoker);
-        $this->operatorResolution = new OperatorResolution($members, $this->invoker);
+        $this->operatorResolution = new OperatorResolution($members, $this->invoker, $conversion);
         $this->evaluator = new Evaluator();
     }
 
@@ -58,18 +62,18 @@ final readonly class Language {
     /**
      * @throws LanguageException
      */
-    public function evaluate(string|Expression $expression, ?Scope $scope = null): Value {
+    public function evaluate(string|Expression $expression, ?Scope $scope = null, ?Notices $notices = null): Value {
         $expression = is_string($expression) ? new Expression($expression) : $expression;
-        return $this->evaluateNode($expression->node(), $scope);
+        return $this->evaluateNode($expression->node(), $scope, $notices);
     }
 
     /**
      * @throws LanguageException
      */
-    public function render(string|Template $template, ?Scope $scope = null): string {
+    public function render(string|Template $template, ?Scope $scope = null, ?Notices $notices = null): string {
         $template = is_string($template) ? new Template($template) : $template;
         $text = $template->plainText();
-        return $text ?? (string)$this->evaluateNode($template->node(), $scope);
+        return $text ?? (string)$this->evaluateNode($template->node(), $scope, $notices);
     }
 
     /**
@@ -87,7 +91,7 @@ final readonly class Language {
             return null;
         }
 
-        $context = $this->context($scope);
+        $context = $this->context($scope, new Notices());
         $value = $scope->get($first);
         foreach ($names as $name) {
             $value = $context->findProperty($value, $name);
@@ -102,11 +106,11 @@ final readonly class Language {
     /**
      * @throws LanguageException
      */
-    private function evaluateNode(Node $node, ?Scope $scope): Value {
-        return $this->evaluator->evaluate($node, $this->context($scope ?? $this->scope()));
+    private function evaluateNode(Node $node, ?Scope $scope, ?Notices $notices): Value {
+        return $this->evaluator->evaluate($node, $this->context($scope ?? $this->scope(), $notices ?? new Notices()));
     }
 
-    private function context(Scope $scope): EvaluationContext {
-        return new Context($scope, $this->valueMapper, $this->memberAccess, $this->operatorResolution);
+    private function context(Scope $scope, Notices $notices): EvaluationContext {
+        return new Context($scope, $notices, $this->valueMapper, $this->memberAccess, $this->operatorResolution);
     }
 }

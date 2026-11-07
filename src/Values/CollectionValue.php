@@ -5,10 +5,13 @@ namespace Mineflow\Language\Values;
 
 use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Attribute\FromContext;
+use Mineflow\Language\Attribute\FromValue;
 use Mineflow\Language\Attribute\Index;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Property;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Runtime\EvaluationContext;
+use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\Expression\CollectionOf;
 use Mineflow\Language\Types\Expression\ListOf;
@@ -23,6 +26,11 @@ abstract readonly class CollectionValue extends Value {
      * @return array<string|int, Value>
      */
     abstract public function items(): array;
+
+    #[FromValue]
+    public static function fromValue(Value $value, Notices $notices): self {
+        return ListValue::fromValue($value, $notices);
+    }
 
     public function item(string|int $key): ?Value {
         return $this->items()[$key] ?? null;
@@ -108,6 +116,41 @@ abstract readonly class CollectionValue extends Value {
     #[Index(type: Special::Mixed, description: "The item under that key, or else the property of that name read off every item; null when neither is there.")]
     public function entry(string $name, #[FromContext] EvaluationContext $context): ?Value {
         return $this->item($name) ?? $this->pluck($name, $context);
+    }
+
+    /**
+     * Pairs the items of two collections by key as NumPy pairs array elements, but where NumPy refuses keys that
+     * differ, keeps the keys both have.
+     * @return array<string|int, Value>
+     */
+    protected function calculateItems(BinaryOperator $operator, Value $operand, EvaluationContext $context): array {
+        $calculate = static fn(Value $left, Value $right) => $context->operate($operator, $left, $right);
+        $items = $this->items();
+        if (!$operand instanceof self) {
+            return array_map(static fn(Value $item) => $calculate($item, $operand), $items);
+        }
+
+        $others = $operand->items();
+        if (count($others) === 1 && count($items) !== 1) {
+            $other = $others[array_key_first($others)];
+            return array_map(static fn(Value $item) => $calculate($item, $other), $items);
+        }
+        if (count($items) === 1 && count($others) !== 1) {
+            $item = $items[array_key_first($items)];
+            return array_map(static fn(Value $other) => $calculate($item, $other), $others);
+        }
+
+        $paired = array_intersect_key($items, $others);
+        if (count($paired) !== count($items) || count($paired) !== count($others)) {
+            $context->notices()->add("The collections have different keys, so only the items under keys both have are calculated.");
+        }
+
+        $results = [];
+        foreach ($paired as $key => $item) {
+            $results[$key] = $calculate($item, $others[$key]);
+        }
+
+        return $results;
     }
 
     /**

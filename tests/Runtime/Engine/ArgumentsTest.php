@@ -5,8 +5,8 @@ namespace Mineflow\Language\Tests\Runtime\Engine;
 
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Param;
-use Mineflow\Language\Error\ArgumentTypeMismatch;
-use Mineflow\Language\Error\InvalidIntegerConversion;
+use Mineflow\Language\Diagnostics\Notice;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Error\MissingArgument;
 use Mineflow\Language\Error\SourceError;
 use Mineflow\Language\Language;
@@ -75,6 +75,16 @@ final class ArgumentsTest extends TestCase {
         self::fail("Expected $source to be refused.");
     }
 
+    /**
+     * @param array<string, mixed> $variables
+     * @return array{mixed, list<string>}
+     */
+    private function evaluateWithNotices(string $source, array $variables = []): array {
+        $notices = new Notices();
+        $value = $this->language->evaluate($source, $this->language->scope($variables), $notices)->native();
+        return [$value, array_map(static fn(Notice $notice) => $notice->message, $notices->all())];
+    }
+
     public function testAParameterWithoutADefaultHasToBePassed(): void {
         $error = $this->refusal("pad(x)");
 
@@ -94,28 +104,32 @@ final class ArgumentsTest extends TestCase {
         self::assertSame("a|b|c", $this->language->evaluate("tag(a, b, c)")->native());
     }
 
-    public function testAVariadicParameterStillChecksEachArgument(): void {
-        $error = $this->refusal("tag(a, {1})");
-
-        self::assertInstanceOf(ArgumentTypeMismatch::class, $error);
-        self::assertSame("parts expects string, got number", $error->getMessage());
-        self::assertSame(["parts", "string", "number"], [$error->parameter, (string)$error->expected, (string)$error->actual]);
+    public function testAVariadicParameterConvertsEachArgument(): void {
+        self::assertSame(["a|1|true|null", []], $this->evaluateWithNotices("tag(a, {1}, {t}, {z})", ["t" => true, "z" => null]));
     }
 
-    public function testAnIntegerParameterTakesANumberThatHasNoFraction(): void {
-        self::assertSame("x ", $this->language->evaluate("pad(x, 2.0)")->native());
-
-        $error = $this->refusal("pad(x, {1.5})");
-        self::assertInstanceOf(InvalidIntegerConversion::class, $error);
-        self::assertSame(1.5, $error->actual);
+    public function testAnIntegerParameterTakesANumberWithoutItsFraction(): void {
+        self::assertSame(["x ", []], $this->evaluateWithNotices("pad(x, 2.0)"));
+        self::assertSame(["x", ["1.5 is not a whole number, so 1 is used."]], $this->evaluateWithNotices("pad(x, {1.5})"));
+        self::assertSame(["x", ["-1.9 is not a whole number, so -1 is used."]], $this->evaluateWithNotices("pad(x, -1.9)"));
+        self::assertSame(["x", ["INF is not a whole number, so 0 is used."]], $this->evaluateWithNotices("pad(x, {n})", ["n" => INF]));
     }
 
-    public function testEachItemIsCheckedAsAnArgumentOfItsOwn(): void {
-        $error = $this->refusal("total({names})", ["names" => ["a", 1]]);
+    public function testTextThatIsNoNumberIsZeroWithANoticeOfTheParameter(): void {
+        self::assertSame(["x  ", []], $this->evaluateWithNotices("pad(x, 3)"));
+        self::assertSame(["x  ", []], $this->evaluateWithNotices("pad(x, {n})", ["n" => "3"]));
+        self::assertSame(["x", []], $this->evaluateWithNotices("pad(x, {n})", ["n" => null]));
+        self::assertSame(["x", ["width of pad: \"wide\" is not a number, so 0 is used."]], $this->evaluateWithNotices("pad(x, wide)"));
+    }
 
-        self::assertInstanceOf(ArgumentTypeMismatch::class, $error);
-        self::assertSame("names[1] expects string, got number", $error->getMessage());
-        self::assertSame(3, $this->language->evaluate("sum({numbers})", $this->language->scope(["numbers" => ["1", 2]]))->native());
+    public function testEachItemIsConvertedAsAnArgumentOfItsOwn(): void {
+        self::assertSame([2, []], $this->evaluateWithNotices("total({names})", ["names" => ["a", 1]]));
+        self::assertSame([3, ["numbers[1] of sum: \"two\" is not a number, so 0 is used."]], $this->evaluateWithNotices("sum({numbers})", ["numbers" => ["3", "two"]]));
+    }
+
+    public function testAValueThatIsNoCollectionIsAListOfIt(): void {
+        self::assertSame([1, []], $this->evaluateWithNotices("total(a)"));
+        self::assertSame([0, []], $this->evaluateWithNotices("total({z})", ["z" => null]));
     }
 
     public function testAResultIsNotRefusedForTheItemsItHolds(): void {

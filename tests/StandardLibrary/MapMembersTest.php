@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Tests\StandardLibrary;
 
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Language;
 use Mineflow\Language\Runtime\Scope;
 use PHPUnit\Framework\TestCase;
@@ -27,6 +28,16 @@ final class MapMembersTest extends TestCase {
     public function testOperatorsApplyToEveryValueAndKeepTheKeys(): void {
         self::assertSame(["apple" => 110.0, "pear" => 160.0], $this->evaluate("prices + 10"));
         self::assertSame(["apple" => 50.0, "pear" => 75.0], $this->evaluate("prices / 2"));
+    }
+
+    public function testTwoMapsAreCalculatedUnderTheKeysBothHave(): void {
+        $scope = $this->language->scope(["prices" => ["apple" => 100, "pear" => 150], "counts" => ["pear" => 2, "apple" => 3], "sale" => ["pear" => 50, "plum" => 10]]);
+        $notices = new Notices();
+
+        self::assertSame(["apple" => 300, "pear" => 300], $this->language->evaluate("prices * counts", $scope, $notices)->native());
+        self::assertSame(0, $notices->count());
+        self::assertSame(["pear" => 100], $this->language->evaluate("prices - sale", $scope, $notices)->native());
+        self::assertSame(1, $notices->count());
     }
 
     public function testReadingEntries(): void {

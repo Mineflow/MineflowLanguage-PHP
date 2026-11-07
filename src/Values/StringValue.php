@@ -5,9 +5,11 @@ namespace Mineflow\Language\Values;
 
 use Mineflow\Language\Attribute\DeclareType;
 use Mineflow\Language\Attribute\FromNative;
+use Mineflow\Language\Attribute\FromValue;
 use Mineflow\Language\Attribute\Method;
 use Mineflow\Language\Attribute\Operator;
 use Mineflow\Language\Attribute\Property;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Syntax\BinaryOperator;
 
 #[DeclareType("string")]
@@ -18,6 +20,11 @@ readonly class StringValue extends Value {
     #[FromNative]
     public static function fromNative(string $value): self {
         return new self($value);
+    }
+
+    #[FromValue]
+    public static function fromValue(Value $value, Notices $notices): self {
+        return new self((string)$value);
     }
 
     public function native(): string {

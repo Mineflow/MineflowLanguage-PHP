@@ -9,7 +9,7 @@ use Mineflow\Language\Runtime\Member;
 use Mineflow\Language\Values\Value;
 
 final readonly class MemberInvoker {
-    public function __construct(private ArgumentBinder $argumentBinder = new ArgumentBinder()) {
+    public function __construct(private ArgumentBinder $argumentBinder) {
     }
 
     /**
@@ -19,7 +19,7 @@ final readonly class MemberInvoker {
         $reference = $member->declaration->reference;
         $definition = $member->declaration->definition;
 
-        $arguments = $this->argumentBinder->bind($reference, $definition, $arguments);
+        $arguments = $this->argumentBinder->bind($reference, $definition, $arguments, $context->notices());
         $result = $member->implementation->call($target, $arguments, $context);
 
         if (!$definition->returns->accepts($result->type())) {
