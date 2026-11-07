@@ -14,9 +14,7 @@ use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Serialization\ValueSerializer;
-use Mineflow\Language\Syntax\Node\ConcatenationNode;
 use Mineflow\Language\Syntax\Node\Node;
-use Mineflow\Language\Syntax\Parser;
 use Mineflow\Language\Values\Value;
 use Mineflow\Language\Values\ValueMapper;
 
@@ -57,32 +55,21 @@ final readonly class Language {
         return $this->valueMapper->wrap($value);
     }
 
-    public function parseExpression(string $source): Node {
-        return (new Parser())->parseExpression($source);
-    }
-
-    public function parseTemplate(string $source): Node {
-        return (new Parser())->parseTemplate($source);
+    /**
+     * @throws LanguageException
+     */
+    public function evaluate(string|Expression $expression, ?Scope $scope = null): Value {
+        $expression = is_string($expression) ? new Expression($expression) : $expression;
+        return $this->evaluateNode($expression->node(), $scope);
     }
 
     /**
      * @throws LanguageException
      */
-    public function evaluate(string|Node $expression, ?Scope $scope = null): Value {
-        $node = is_string($expression) ? $this->parseExpression($expression) : $expression;
-        return $this->evaluator->evaluate($node, $this->context($scope ?? $this->scope()));
-    }
-
-    /**
-     * @throws LanguageException
-     */
-    public function render(string|Node $template, ?Scope $scope = null): string {
-        $node = is_string($template) ? $this->parseTemplate($template) : $template;
-        if (!$node instanceof ConcatenationNode) {
-            $node = new ConcatenationNode([$node], $node->start, $node->end);
-        }
-
-        return $this->evaluator->render($node, $this->context($scope ?? $this->scope()));
+    public function render(string|Template $template, ?Scope $scope = null): string {
+        $template = is_string($template) ? new Template($template) : $template;
+        $text = $template->plainText();
+        return $text ?? (string)$this->evaluateNode($template->node(), $scope);
     }
 
     /**
@@ -110,6 +97,13 @@ final readonly class Language {
         }
 
         return $value;
+    }
+
+    /**
+     * @throws LanguageException
+     */
+    private function evaluateNode(Node $node, ?Scope $scope): Value {
+        return $this->evaluator->evaluate($node, $this->context($scope ?? $this->scope()));
     }
 
     private function context(Scope $scope): EvaluationContext {

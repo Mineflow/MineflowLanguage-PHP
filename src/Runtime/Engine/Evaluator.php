@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime\Engine;
 
-use Closure;
 use Mineflow\Language\Error\LanguageException;
 use Mineflow\Language\Error\SourceError;
 use Mineflow\Language\Runtime\EvaluationContext;
@@ -32,26 +31,8 @@ final readonly class Evaluator {
      * @throws LanguageException
      */
     public function evaluate(Node $node, EvaluationContext $context): Value {
-        return $this->locate($node, fn() => $this->dispatch($node, $context));
-    }
-
-    /**
-     * @throws LanguageException
-     */
-    public function render(ConcatenationNode $template, EvaluationContext $context): string {
-        return $this->locate($template, fn() => $this->concatenate($template, $context));
-    }
-
-    /**
-     * @template T
-     * @param Node $node
-     * @param Closure(): T $step
-     * @return T
-     * @throws LanguageException
-     */
-    private function locate(Node $node, Closure $step): mixed {
         try {
-            return $step();
+            return $this->dispatch($node, $context);
         } catch (SourceError $error) {
             throw $error->at($node->start, $node->end);
         }
