@@ -8,7 +8,6 @@ use Mineflow\Language\Definition\MemberKind;
 use Mineflow\Language\Definition\MemberReference;
 use Mineflow\Language\Error\ArgumentTypeMismatch;
 use Mineflow\Language\Error\MissingArgument;
-use Mineflow\Language\Error\TooManyArguments;
 use Mineflow\Language\Types\CollectionType;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Types\UnionType;
@@ -48,11 +47,8 @@ final readonly class ArgumentBinder {
             }
         }
 
-        if (!$variadic && count($arguments) > count($definition->parameters)) {
-            throw new TooManyArguments($reference, count($arguments));
-        }
-
-        return $arguments;
+        // Arguments beyond the parameters are dropped, not refused.
+        return $variadic ? $arguments : array_slice($arguments, 0, count($definition->parameters));
     }
 
     /**

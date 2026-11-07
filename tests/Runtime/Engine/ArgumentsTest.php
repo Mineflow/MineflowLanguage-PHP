@@ -9,7 +9,6 @@ use Mineflow\Language\Error\ArgumentTypeMismatch;
 use Mineflow\Language\Error\InvalidIntegerConversion;
 use Mineflow\Language\Error\MissingArgument;
 use Mineflow\Language\Error\SourceError;
-use Mineflow\Language\Error\TooManyArguments;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Types\Expression\ListOf;
@@ -84,12 +83,10 @@ final class ArgumentsTest extends TestCase {
         self::assertSame(["pad", "width"], [$error->reference->name, $error->parameter]);
     }
 
-    public function testAnExtraArgumentIsRefusedAndNamesTheMember(): void {
-        $error = $this->refusal("pad(x, 4, 5)");
-
-        self::assertInstanceOf(TooManyArguments::class, $error);
-        self::assertSame("Too many arguments for pad", $error->getMessage());
-        self::assertSame(["pad", 3], [$error->reference->name, $error->givenCount]);
+    public function testAnExtraArgumentIsIgnored(): void {
+        self::assertSame("x   ", $this->language->evaluate("pad(x, 4, 5)")->native());
+        self::assertSame(1, $this->language->evaluate("total({names}, a, b)", $this->language->scope(["names" => ["a"]]))->native());
+        self::assertSame(1, $this->language->evaluate("labels().last(a)")->native());
     }
 
     public function testAVariadicParameterTakesEveryRemainingArgument(): void {
