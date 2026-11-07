@@ -14,7 +14,7 @@ use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\MemberTable;
 use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Serialization\ValueSerializer;
-use Mineflow\Language\Syntax\Node\ConcatenationNode;
+use Mineflow\Language\Syntax\Node\Node;
 use Mineflow\Language\Values\Value;
 use Mineflow\Language\Values\ValueMapper;
 
@@ -60,7 +60,7 @@ final readonly class Language {
      */
     public function evaluate(string|Expression $expression, ?Scope $scope = null): Value {
         $expression = is_string($expression) ? new Expression($expression) : $expression;
-        return $this->evaluator->evaluate($expression->node(), $this->context($scope ?? $this->scope()));
+        return $this->evaluateNode($expression->node(), $scope);
     }
 
     /**
@@ -69,16 +69,7 @@ final readonly class Language {
     public function render(string|Template $template, ?Scope $scope = null): string {
         $template = is_string($template) ? new Template($template) : $template;
         $text = $template->plainText();
-        if ($text !== null) {
-            return $text;
-        }
-
-        $node = $template->node();
-        if (!$node instanceof ConcatenationNode) {
-            $node = new ConcatenationNode([$node], $node->start, $node->end);
-        }
-
-        return $this->evaluator->render($node, $this->context($scope ?? $this->scope()));
+        return $text ?? (string)$this->evaluateNode($template->node(), $scope);
     }
 
     /**
@@ -106,6 +97,13 @@ final readonly class Language {
         }
 
         return $value;
+    }
+
+    /**
+     * @throws LanguageException
+     */
+    private function evaluateNode(Node $node, ?Scope $scope): Value {
+        return $this->evaluator->evaluate($node, $this->context($scope ?? $this->scope()));
     }
 
     private function context(Scope $scope): EvaluationContext {
