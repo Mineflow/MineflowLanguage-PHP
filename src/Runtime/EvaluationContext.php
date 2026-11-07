@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime;
 
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Type;
 use Mineflow\Language\Values\Value;
@@ -13,6 +14,8 @@ use Mineflow\Language\Values\Value;
  */
 interface EvaluationContext {
     public function scope(): Scope;
+
+    public function notices(): Notices;
 
     /**
      * Converts a PHP value to a language value. $expected decides whether an array becomes a list or a map.
@@ -35,7 +38,7 @@ interface EvaluationContext {
     public function operate(BinaryOperator $operator, Value $left, Value $right): Value;
 
     /**
-     * Reads `value.name`.
+     * Reads `value.name`. When nothing gives the name, the result is null, with a notice unless the value is null.
      */
     public function property(Value $value, string $name): Value;
 

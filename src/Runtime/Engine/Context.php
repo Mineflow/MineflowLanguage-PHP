@@ -3,18 +3,19 @@ declare(strict_types=1);
 
 namespace Mineflow\Language\Runtime\Engine;
 
-use Mineflow\Language\Definition\MemberReference;
-use Mineflow\Language\Error\UndefinedMember;
+use Mineflow\Language\Diagnostics\Notices;
 use Mineflow\Language\Runtime\EvaluationContext;
 use Mineflow\Language\Runtime\Scope;
 use Mineflow\Language\Syntax\BinaryOperator;
 use Mineflow\Language\Types\Type;
+use Mineflow\Language\Values\NullValue;
 use Mineflow\Language\Values\Value;
 use Mineflow\Language\Values\ValueMapper;
 
 final readonly class Context implements EvaluationContext {
     public function __construct(
         private Scope              $scope,
+        private Notices            $notices,
         private ValueMapper        $valueMapper,
         private MemberAccess       $memberAccess,
         private OperatorResolution $operatorResolution,
@@ -23,6 +24,10 @@ final readonly class Context implements EvaluationContext {
 
     public function scope(): Scope {
         return $this->scope;
+    }
+
+    public function notices(): Notices {
+        return $this->notices;
     }
 
     public function wrap(mixed $value, ?Type $expected = null): Value {
@@ -42,8 +47,15 @@ final readonly class Context implements EvaluationContext {
     }
 
     public function property(Value $value, string $name): Value {
-        return $this->findProperty($value, $name)
-            ?? throw new UndefinedMember(MemberReference::property((string)$value->type(), $name));
+        $found = $this->findProperty($value, $name);
+        if ($found !== null) {
+            return $found;
+        }
+
+        if (!$value instanceof NullValue) {
+            $this->notices->add("A value of the type {$value->type()} has no property $name, so null is used.");
+        }
+        return new NullValue();
     }
 
     public function findProperty(Value $value, string $name): ?Value {

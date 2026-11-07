@@ -4,11 +4,9 @@ declare(strict_types=1);
 namespace Mineflow\Language\Tests\Runtime\Engine;
 
 use Mineflow\Language\Attribute\Method;
-use Mineflow\Language\Error\ArgumentTypeMismatch;
 use Mineflow\Language\Error\SourceError;
 use Mineflow\Language\Error\UndefinedVariable;
 use Mineflow\Language\Error\UnexpectedToken;
-use Mineflow\Language\Error\UnsupportedCalculation;
 use Mineflow\Language\Language;
 use Mineflow\Language\LanguageBuilder;
 use Mineflow\Language\Runtime\Scope;
@@ -72,16 +70,17 @@ final class EvaluatorTest extends TestCase {
     public function testAPrefixOperatorIsEvaluatedWithZeroOnItsLeft(): void {
         self::assertSame(-5.0, $this->evaluate("-5"));
         self::assertSame(5.0, $this->evaluate("+5"));
-        // So using the prefix form requires the type to have a - that takes a number as its left operand. string has no such operator.
-        self::assertSame(UnsupportedCalculation::class, $this->errorOf("-name"));
+        // Text that reads as no number counts as 0 there.
+        self::assertSame(0, $this->evaluate("-name"));
+        self::assertSame(-5, $this->evaluate("-n"));
     }
 
     public function testABareArgumentIsTextAndBracesPassTheValue(): void {
         self::assertSame("bar", $this->evaluate("identity(bar)"));
         self::assertSame("aieuo", $this->evaluate("identity({name})"));
         self::assertSame("xy", $this->evaluate("identity({a}{b})"));
-        // A number is a literal, so it is passed as a number and does not match a string parameter.
-        self::assertSame(ArgumentTypeMismatch::class, $this->errorOf("identity(1)"));
+        // A number is a literal, so it is passed as a number, which a string parameter takes as its text.
+        self::assertSame("1", $this->evaluate("identity(1)"));
     }
 
     public function testAnArgumentWithoutAnOperatorOrAParenthesisIsTheTextWrittenThere(): void {
@@ -110,9 +109,9 @@ final class EvaluatorTest extends TestCase {
         self::assertSame(UnexpectedToken::class, $this->errorOf("identity(a,)"));
     }
 
-    public function testAMethodTakesTheTextOfANumberWhereAnOperatorDoesNot(): void {
+    public function testTheTextOfANumberIsTheNumberForAMethodAndAnOperator(): void {
         self::assertSame(10, $this->evaluate("double({n})"));
-        self::assertSame(UnsupportedCalculation::class, $this->errorOf("1 + n"));
+        self::assertSame(6.0, $this->evaluate("1 + n"));
     }
 
     public function testBracesInAnExpressionNameTheVariableToRead(): void {
