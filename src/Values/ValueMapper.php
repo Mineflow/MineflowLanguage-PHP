@@ -23,7 +23,16 @@ final readonly class ValueMapper {
      *     converts the PHP data it holds into its items.
      */
     public function __construct(private ?TypeRegistry $registry = null) {
-        $this->conversionRegistry = $registry ?? new TypeRegistry(StandardTypes::CLASSES);
+        $this->conversionRegistry = $registry ?? self::standardRegistry();
+    }
+
+    /**
+     * Built once: a Value class may make a mapper for every item it reads, and reading the standard types'
+     * declarations each time costs more than the conversion.
+     */
+    private static function standardRegistry(): TypeRegistry {
+        static $registry = null;
+        return $registry ??= new TypeRegistry(StandardTypes::CLASSES);
     }
 
     public function wrap(mixed $value, ?Type $expected = null): Value {
