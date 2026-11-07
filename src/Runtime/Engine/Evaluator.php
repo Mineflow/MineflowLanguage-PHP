@@ -22,6 +22,7 @@ use Mineflow\Language\Syntax\Node\ParenthesizedNode;
 use Mineflow\Language\Syntax\Node\PropertyNode;
 use Mineflow\Language\Syntax\Node\StringNode;
 use Mineflow\Language\Syntax\Node\UnaryExpressionNode;
+use Mineflow\Language\Values\CollectionValue;
 use Mineflow\Language\Values\NumberValue;
 use Mineflow\Language\Values\StringValue;
 use Mineflow\Language\Values\Value;
@@ -41,6 +42,34 @@ final readonly class Evaluator {
 
         $notices->locate($from, $node->start, $node->end);
         return $value;
+    }
+
+    /**
+     * The texts a template gives when every collection one of its embeddings gives is spread out. Text n joins
+     * item n of each collection by position, with empty text for a collection that has fewer items, so there
+     * are as many texts as the longest collection has items. A template with no collection gives one text.
+     * @return list<string>
+     * @throws LanguageException
+     */
+    public function expand(Node $template, EvaluationContext $context): array {
+        $parts = $template instanceof ConcatenationNode ? $template->parts : [$template];
+        $columns = [];
+        $rows = null;
+        foreach ($parts as $part) {
+            $value = $part instanceof StringNode ? $part->text : $this->evaluate($part, $context);
+            if ($value instanceof CollectionValue) {
+                $value = array_values(array_map(strval(...), $value->items()));
+                $rows = max($rows ?? 0, count($value));
+            }
+            $columns[] = $value instanceof Value ? (string)$value : $value;
+        }
+
+        $texts = [];
+        for ($row = 0; $row < ($rows ?? 1); $row++) {
+            $texts[] = implode("", array_map(static fn(string|array $column) => is_string($column) ? $column : $column[$row] ?? "", $columns));
+        }
+
+        return $texts;
     }
 
     /**
